@@ -374,7 +374,6 @@ body.short.airport .screen > h1{padding:6px 14px}
     <div id="g-tuethu"></div>
     <button class="btn" data-add="tuethu">إضافة حصة لثلاثاء-خميس فقط</button>
     <hr>
-    <label class="field">اسم المدرسة<input type="text" id="school"></label>
     <label class="chk"><input type="checkbox" id="callEnabled"> تمكين الربط بشاشة النداء (تفتح تلقائيًا قبل نهاية الدوام)</label>
     <label class="field" id="callBeforeField">تفتح شاشة النداء تلقائيًا قبل نهاية الدوام بـ (دقائق)<input type="number" id="callBefore" min="0" max="120" step="1" inputmode="numeric"></label>
     <p class="hint" id="callPreview"></p>
@@ -410,7 +409,7 @@ function sanitize(c){
   const d=clone(DEFAULTS),o=(c&&typeof c==='object')?c:{};
   const rows=a=>Array.isArray(a)?a.filter(r=>Array.isArray(r)&&r.length>=2).map(r=>[isTime(r[0])?r[0]:'',String(r[1]).slice(0,120)]):null;
   ['all','sunmon','tuethu'].forEach(k=>{const v=rows(o[k]);if(v)d[k]=v});
-  if(typeof o.school==='string')d.school=o.school.slice(0,120);
+  // school name is fixed (not editable); any previously saved name is ignored
   if(typeof o.callEnabled==='boolean')d.callEnabled=o.callEnabled;
   if(typeof o.callUrl==='string')d.callUrl=o.callUrl.slice(0,500);
   if(isTime(o.returnTime))d.returnTime=o.returnTime;
@@ -591,7 +590,7 @@ function fillSettings(){
   ['all','sunmon','tuethu'].forEach(g=>$('g-'+g).innerHTML=groupHTML(g));
   $('todayOnly').checked=!!override;
   $('airport').checked=document.body.classList.contains('airport');
-  ['school','returnTime'].forEach(k=>$(k).value=c[k]);
+  ['returnTime'].forEach(k=>$(k).value=c[k]);
   $('callEnabled').checked=c.callEnabled!==false;
   syncCallUI();
   $('callBefore').value=callBeforeMin();
@@ -608,7 +607,7 @@ panel.addEventListener('input',e=>{
   else if(t.id==='callBefore'){c.callBefore=Math.max(0,Math.min(120,parseInt(t.value,10)||0));updateCallPreview()}
   else if(t.id==='callUrl'){c.callUrl=t.value.trim().slice(0,500);t.setCustomValidity(safeUrl(c.callUrl)?'':'الرابط يجب أن يبدأ بـ https://');t.reportValidity()}
   else if(t.id==='returnTime'){if(isTime(t.value))c.returnTime=t.value}
-  else if(['school','voice'].includes(t.id)){c[t.id]=t.value.slice(0,120)}
+  else if(t.id==='voice'){c.voice=t.value.slice(0,120)}
   save();render();
 });
 panel.addEventListener('click',e=>{
