@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BellBoard</title>
+<link id="favIcon" rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link id="touchIcon" rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b4a3c">
+<meta name="application-name" content="BellBoard">
+<meta name="apple-mobile-web-app-title" content="BellBoard">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-top:#145b48; --bg-bottom:#002f2a;
+  --fg:#f2faf6; --accent:#ffffff; --accent-ink:#0a1a2e;
+  --muted:#91aaa0; --link:#7b8aa3;
+  --panel:#ffffff; --panel-ink:#111; --line:#e5e7eb; --danger:#dc2626;
+  --row-line:transparent; --row-active:transparent; --table-border:transparent;
+  --title-color:var(--accent); --time-color:var(--accent); --glow:none;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --panel:#ffffff; } }
+:root[data-theme="dark"]{ --panel:#ffffff; }
+body.airport{ --bg-top:#1b2233; --bg-bottom:#06080d; }
+*{box-sizing:border-box}
+button,input,select,textarea,th,td{font-family:'Tajawal',system-ui,sans-serif}
+html,body{margin:0;height:100%;overflow:hidden}
+html{scrollbar-width:none}::-webkit-scrollbar{display:none}
+body{font-family:'Tajawal',system-ui,sans-serif;color:var(--fg);background:var(--bg-bottom);overflow-x:hidden}
+main{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;
+  background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom));text-align:center}
+.school{font-size:clamp(20px,2.25vw,31px);font-weight:700;margin:0;padding:10px 16px;border:1px solid var(--muted);border-radius:13px}
+h1{font-size:clamp(40px,4.6vw,63px);font-weight:800;color:var(--title-color);margin:24px 0 32px;text-shadow:var(--glow);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){h1{animation:none}}
+.now{font-size:clamp(22px,2.1vw,29px);font-weight:700;margin-bottom:24px;display:flex;gap:24px}
+table{border-collapse:collapse;font-size:clamp(18px,1.65vw,22.5px)}
+td{padding:4px 11px;text-align:right}
+td.t{color:var(--time-color);font-weight:700;direction:ltr;text-align:right}
+tr.active td{font-weight:700}
+tr.active td.t{color:var(--fg)}
+tr.end td{color:var(--accent)}
+/* classic layout: board wrappers are invisible */
+.board{flex:none;transform-origin:center center}
+.board,.screen{display:flex;flex-direction:column;align-items:center}
+.board-top,.sh-title,thead,.x{display:none}
+.screen-head{display:contents}
+.now{order:0}
+.screen > h1{order:-1}.screen-head .school{order:-2}
+body:not(.airport) .screen > .now{order:-1;margin-top:-8px}
+body:not(.airport) .screen > h1{order:-1}
+body:not(.airport) table{order:1}
+
+/* ===== airport departures board ===== */
+body.airport main{background:radial-gradient(ellipse at 50% -10%,#3a4257 0%,#151a26 45%,#06080d 100%);padding:0}
+body.airport .board{width:1000px;flex:none;background:linear-gradient(#141518,#0a0a0c);border:2px solid #2a2c31;border-radius:12px;padding:10px 14px 16px;box-shadow:0 30px 80px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.06);align-items:stretch}
+body.airport .board-top{display:flex;justify-content:flex-start;padding-right:8px !important;align-items:center;gap:16px;padding:8px 0 14px;color:#fff;position:relative;min-height:96px}
+.aclock{display:none}
+body.airport .aclock{display:flex;align-items:center;gap:12px;position:absolute;left:6px;top:50%;transform:translateY(-55%)}
+.aclock svg{width:82px;height:82px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.6))}
+#hH,#hM,#hS{transform-origin:50px 50px}
+#clockBig{font-size:26px;font-weight:800;direction:rtl;letter-spacing:.5px}
+body.airport #clock{display:none}
+/* classic (green) theme: original look; only the time is shown as an analog clock */
+body:not(.airport){--accent:#ffe044;--accent-ink:#07332e;--title-color:#ffe044;--time-color:#ffe044}
+body:not(.airport) .btn{background:linear-gradient(180deg,rgba(255,232,102,.95),rgba(255,214,40,.8));border:1px solid rgba(214,170,0,.55);color:#2a2200;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 8px rgba(120,95,0,.2);transition:transform .12s ease,box-shadow .12s ease}
+body:not(.airport) .btn:active{transform:scale(.97);box-shadow:inset 0 3px 8px rgba(120,90,0,.35),0 1px 2px rgba(0,0,0,.15)}
+body:not(.airport) .btn.dark{background:#07332e;color:#fff}
+.tablewrap{display:contents}
+.side{display:none}
+/* green layout: two balanced cards — schedule (right) and clock + dates (left) */
+body:not(.airport) h1{margin:22px 0 30px}
+/* green: school name in a glass capsule matching the cards, with a gold school emblem */
+body:not(.airport) .school{align-self:flex-start;display:inline-flex;align-items:center;gap:14px;padding:0;border:0;border-radius:0;background:none;box-shadow:none;
+  font-size:clamp(20px,2.2vw,30px);font-weight:800;color:#f2faf6;letter-spacing:.2px;text-shadow:0 2px 10px rgba(0,0,0,.25)}
+body:not(.airport) .school::before{content:"";flex:none;width:38px;height:38px;border-radius:50%;
+  background:#ffe044 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%2307332e'%3E%3Cpath d='M32 6a4 4 0 0 1 4 4v2.2c8.6 1.8 14 9 14 18.3V40l5 6v3H9v-3l5-6v-9.5c0-9.3 5.4-16.5 14-18.3V10a4 4 0 0 1 4-4z'/%3E%3Cpath d='M25 53h14a7 7 0 0 1-14 0z'/%3E%3C/svg%3E") center/21px no-repeat;
+  box-shadow:0 0 0 4px rgba(255,224,68,.18)}
+body:not(.airport) .tablewrap{display:flex;order:1;align-items:stretch;gap:32px}
+body:not(.airport) .tablewrap table{order:1}
+body:not(.airport) .side{order:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-width:300px;padding:28px 32px}
+body:not(.airport) .side,body:not(.airport) .tablewrap table{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:20px;box-shadow:0 12px 32px rgba(0,0,0,.25)}
+body:not(.airport) .tablewrap table{border-collapse:separate;border-spacing:0;padding:14px 18px;min-width:400px}
+body:not(.airport) td{padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+body:not(.airport) tr:last-child td{border-bottom:0}
+body:not(.airport) .tablewrap td.t{width:1%;white-space:nowrap;padding-left:48px}
+body:not(.airport) .tablewrap table{font-size:clamp(21px,1.95vw,26px)}
+body:not(.airport) tr.active td{background:rgba(255,224,68,.14)}
+body:not(.airport) tr.active td:first-child{border-radius:0 10px 10px 0;box-shadow:inset -4px 0 0 #ffe044}
+body:not(.airport) tr.active td:last-child{border-radius:10px 0 0 10px}
+body:not(.airport) .side .aclock{display:flex;position:static;transform:none}
+body:not(.airport) .side .aclock svg{width:230px;height:230px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.45))}
+/* green-theme clock: railway-station style (off-white face, dark rim, minute ticks, bar hands) */
+.aclock .sticks{display:none}
+body:not(.airport) .aclock .sticks{display:inline}
+body:not(.airport) .aclock .ticks,body:not(.airport) .aclock #hS{display:none}
+body:not(.airport) .aclock .face{fill:#f3eee4;stroke:#1b2138;stroke-width:3}
+body:not(.airport) .aclock #hH,body:not(.airport) .aclock #hM{stroke:#14161c;stroke-linecap:butt}
+body:not(.airport) .aclock #hH{stroke-width:4.6}
+body:not(.airport) .aclock #hM{stroke-width:3.2}
+body:not(.airport) .aclock .pin{fill:#14161c;r:3}
+body:not(.airport) .side .now{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0}
+body:not(.airport) .side #clock{display:block;order:-1;font-size:40px;font-weight:800;color:#ffe044;line-height:1}
+body:not(.airport) .side #day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:26px}
+body:not(.airport) .side .hj{margin:0;padding:6px 0 0;border:0;border-top:1px solid rgba(255,255,255,.25);font-size:20px;font-weight:500;opacity:.9}
+body:not(.airport) #clockBig{display:none}
+body.airport .plane{display:inline-flex;background:#fff;color:#0a0a0c;border-radius:6px;padding:6px;width:62px;height:62px}
+body.airport .plane svg,.sh-title svg{width:100%;height:100%;fill:currentColor}
+.sh-title .ic{display:inline-flex;width:1.15em;height:1.15em}
+body.airport .bt-text{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05}
+body.airport .bt-text b{font-size:28px;font-weight:800}
+body.airport .bt-text span{font-size:22px;font-weight:700;letter-spacing:.5px;direction:ltr}
+body.airport .screen{background:#08152b;border:4px solid #1c1f26;border-radius:4px;overflow:hidden;align-items:stretch;box-shadow:inset 0 0 40px rgba(0,0,0,.5)}
+body.airport .screen-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;background:linear-gradient(180deg,#38bdf0 0%,#1590cf 60%,#0f7ab5 100%)}
+body.airport .school{border:0;padding:0;font-size:22px;color:#fff;text-align:right}
+body.airport .sh-title{display:flex;align-items:center;gap:10px;color:#fff;font-weight:800;font-size:28px;direction:ltr;letter-spacing:.5px}
+body.airport .gate{background:#0b3a63;color:#fff;font-size:.6em;padding:2px 10px;border-radius:3px}
+body.airport .screen > h1{order:1;margin:0;font-size:38px;color:#fff;text-shadow:none;animation:none;padding:10px 16px;text-align:right;background:#0c2a4a;border-bottom:2px solid #38bdf0;display:flex;align-items:center;gap:12px}
+body.airport .screen > h1::before{content:"الآن";background:#1fbf5b;color:#04220f;font-size:.55em;font-weight:800;padding:4px 10px;border-radius:3px;animation:blink 1.2s steps(1) infinite}
+@keyframes blink{50%{opacity:.35}}
+body.airport table{order:2;width:100%;font-size:24px}
+body.airport thead{display:table-header-group}
+body.airport th{background:#5ccaf0;color:#05223a;font-size:15px;font-weight:800;text-align:right;padding:5px 12px;white-space:nowrap}
+body.airport th small{font-size:10px;font-weight:700;margin-right:8px;opacity:.75}
+body.airport .x{display:table-cell}
+body.airport td{padding:8px 14px;vertical-align:middle;line-height:1.35;color:#e9f4ff;border-bottom:1px solid #0a1324;white-space:nowrap}
+body.airport tbody tr:nth-child(odd) td{background:#0e1f3b}
+body.airport tbody tr:nth-child(even) td{background:#132a4e}
+body.airport td.t,body.airport td.u{color:#fff;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+body.airport td.u{direction:ltr;text-align:right;color:#9cc9e8;font-weight:500}
+body.airport tr.past td:not(.s){color:#7d93ad}
+body.airport tbody tr.active td{background:#1b4a7a;color:#fff}
+body.airport tr.end td{color:#ffffff}
+.st{display:inline;line-height:1.4;text-align:center;font-size:.72em;font-weight:800;padding:3px 8px;border-radius:3px}
+.st.past{color:#7d93ad;border:1px solid #2b4566}
+.st.now{background:#1fbf5b;color:#04220f;animation:blink 1.2s steps(1) infinite}
+.st.next{background:#ffffff;color:#0a1a2e}
+.st.later{color:#5ccaf0;border:1px solid #2a6c93}
+.st.end{background:#ffffff;color:#0a1a2e}
+body.airport .screen > .now{order:3;display:flex;justify-content:space-between;margin:0;padding:6px 16px;font-size:21px;background:#04101f;color:#fff;border-top:2px solid #38bdf0}
+@media (prefers-reduced-motion:reduce){.st.now,body.airport .screen > h1::before{animation:none}}
+/* fullscreen button lives in the board footer; hidden once fullscreen */
+.now{align-items:center}
+.fs{display:inline-flex;align-items:center;gap:7px;font:700 13px 'Tajawal',sans-serif;color:#fff;cursor:pointer;padding:6px 14px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.08));
+  -webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:0 6px 18px rgba(0,0,0,.45),0 2px 4px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.08);
+  text-shadow:0 1px 2px rgba(0,0,0,.4);transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.fs:hover{background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,.14));transform:translateY(-1px);box-shadow:0 10px 24px rgba(0,0,0,.5),0 3px 6px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.7)}
+.fs:active{transform:translateY(0)}
+@media (prefers-reduced-motion:reduce){.fs{transition:none}.fs:hover{transform:none}}
+.fs svg{width:16px;height:16px}
+.hj{margin-right:14px;padding-right:14px;border-right:1px solid currentColor;font-weight:500;opacity:.9}
+.fs{position:fixed;top:12px;right:12px;z-index:5}
+.fs:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
+body.is-fs .fs{visibility:hidden}
+.exitfs{display:none;position:fixed;top:10px;right:10px;z-index:6;width:30px;height:30px;padding:6px;border:0;border-radius:8px;background:transparent;color:#fff;opacity:.3;cursor:pointer}
+.exitfs svg{width:100%;height:100%}
+.exitfs:hover,.exitfs:focus-visible{opacity:1;background:rgba(255,255,255,.12)}
+.exitfs:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
+body.is-fs .exitfs{display:block}
+/* airport-style flashing when a new period starts */
+@keyframes boardFlash{0%,100%{background:#fff;color:#0a1a2e}50%{background:#1b4a7a;color:#fff}}
+@keyframes bannerFlash{0%,100%{background:#fff;color:#0a1a2e}50%{background:#0c2a4a;color:#fff}}
+@keyframes textFlash{0%,100%{opacity:1}50%{opacity:.1}}
+body.airport.flash tbody tr.active td{animation:boardFlash .8s steps(1) infinite}
+body.airport.flash tbody tr.active td .st{background:#1fbf5b;color:#04220f}
+body.airport.flash .screen > h1{animation:bannerFlash .8s steps(1) infinite}
+@keyframes greenRowFlash{0%,100%{background:#ffe044;color:#07332e}50%{background:rgba(255,224,68,.14);color:#f2faf6}}
+@keyframes greenTitleFlash{0%,100%{color:#ffe044;text-shadow:0 0 28px rgba(255,224,68,.75)}50%{color:#ffffff;text-shadow:none}}
+body.flash:not(.airport) .screen > h1{animation:greenTitleFlash .8s steps(1) infinite}
+body.flash:not(.airport) tr.active td{animation:greenRowFlash .8s steps(1) infinite}
+@media (prefers-reduced-motion:reduce){
+  body.airport.flash tbody tr.active td,body.airport.flash .screen > h1{animation:none;background:#fff;color:#0a1a2e}
+  body.flash:not(.airport) .screen > h1,body.flash:not(.airport) tr.active td{animation:none}
+  body.flash:not(.airport) tr.active td{background:#ffe044;color:#07332e}
+}
+.pill{font-family:inherit;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:700;border:0;border-radius:12px;padding:5px 9px;cursor:pointer}
+/* glass pills: translucent tinted glass, highlight, soft shadow; deeper pressed shadow on click */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:13px;
+  color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);
+  background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,.08));
+  -webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%);
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 4px 12px rgba(0,0,0,.3);
+  transition:transform .12s ease,box-shadow .12s ease,background .12s ease}
+body:not(.airport) .pill{color:#fff6c4;background:linear-gradient(180deg,rgba(255,224,68,.42),rgba(255,224,68,.14));border-color:rgba(255,224,68,.65)}
+.pill:hover{background:linear-gradient(180deg,rgba(255,255,255,.38),rgba(255,255,255,.14))}
+body:not(.airport) .pill:hover{background:linear-gradient(180deg,rgba(255,224,68,.55),rgba(255,224,68,.22))}
+.pill:active{transform:translateY(1px) scale(.97);box-shadow:inset 0 3px 8px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.35)}
+/* call icon */
+.pill svg{width:16px;height:16px;flex:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+@media (prefers-reduced-motion:reduce){.pill,body:not(.airport) .btn{transition:none}.pill:active,body:not(.airport) .btn:active{transform:none}}
+.pill:focus-visible,.linkbtn:focus-visible,.panel button:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
+#soundBtn{position:fixed;top:12px;left:12px}
+#voiceStatus{position:fixed;top:44px;left:12px;font-size:11px;color:var(--muted)}
+.br{position:fixed;right:12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;bottom:12px}
+.linkbtn{position:fixed;bottom:16px;left:12px;background:none;border:0;color:var(--link);text-decoration:underline;font:14px 'Tajawal',sans-serif;cursor:pointer;z-index:30}
+/* settings */
+#settings{position:fixed;inset:0;z-index:20;display:none;align-items:flex-start;justify-content:center;padding:24px 16px 64px;background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom))}
+#settings.open{display:flex}
+.panel{background:var(--panel);color:var(--panel-ink);border-radius:16px;width:min(672px,100%);max-height:calc(100vh - 88px);overflow:auto;padding:20px;text-align:right}
+.panel h3{font-size:15px;margin:8px 0 12px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.btn{font-family:inherit;background:#fff;color:#111;font-weight:700;font-size:15px;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px 22px;cursor:pointer}
+.btn.dark{background:#07332e;color:#fff}
+.chk{display:flex;align-items:center;gap:8px;font-size:14px;margin:10px 0}
+.row{display:flex;gap:8px;align-items:center;margin:10px 0}
+.row input[type=time]{width:144px;flex:none}
+.row input[type=text]{flex:1;min-width:0}
+input[type=time],input[type=text],input[type=url],select{font:15px 'Tajawal',sans-serif;border:1px solid #d1d5db;border-radius:8px;padding:9px 10px;background:#fff;color:#111}
+.del{color:var(--danger);background:none;border:0;font:15px 'Tajawal',sans-serif;cursor:pointer;flex:none;padding:4px}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+.field{display:flex;flex-direction:column;gap:6px;margin:14px 0;font-size:14px}
+.days{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
+.hint{margin:-6px 0 10px;font-size:13px;color:#4b5563}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+/* call screen */
+#call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
+#call.open{display:block}
+#call iframe{border:0;width:100%;height:100%}
+#call .back{position:fixed;top:30px;left:170px;background:#02231c;color:#fff;font:700 18px 'Tajawal',sans-serif;border:0;border-radius:999px;padding:10px 36px;cursor:pointer}
+#endMsg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-size:clamp(32px,5vw,64px);font-weight:800;color:var(--accent);background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom));z-index:12}
+#endMsg.open{display:flex}
+@media (max-width:600px){#call .back{left:16px}.row{flex-wrap:wrap}.row input[type=time]{width:120px}}
+
+/* ===== unified toolbar: all controls in one glass bar at the bottom centre ===== */
+.toolbar{position:fixed;left:56px;bottom:12px;z-index:30;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.06));
+  -webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);
+  border:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 24px rgba(0,0,0,.35);
+  transition:opacity .4s ease}
+.tbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 12px;border:0;border-radius:999px;background:transparent;cursor:pointer;
+  font:700 12.5px 'Tajawal',sans-serif;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap;transition:background .12s ease,box-shadow .12s ease,transform .12s ease}
+.tbtn svg{width:15px;height:15px;flex:none}
+.tb-icon{width:34px;padding:0;margin-inline-start:6px}
+.tbtn.tb-icon::before{right:-5px !important;top:18% !important;bottom:18% !important;width:1px;background:rgba(255,255,255,.45) !important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tbtn + .tbtn{position:relative}
+.tbtn + .tbtn::before{content:"";position:absolute;right:-1px;top:25%;bottom:25%;width:1px;background:rgba(255,255,255,.25)}
+.tbtn:hover{background:rgba(255,255,255,.14)}
+.tbtn:active{transform:scale(.96);box-shadow:inset 0 3px 8px rgba(0,0,0,.35)}
+.tbtn:focus-visible{outline:2px solid #35c4e8;outline-offset:1px}
+.toolbar #soundBtn{position:relative;top:auto;left:auto}
+@media (max-width:600px){.tbtn{font-size:0;gap:0;padding:0 12px}.tb-icon{padding:0}}
+body.is-fs #fsBtn{display:none}
+/* green: soft full-width underline beneath the school name */
+#schoolRule{display:none;position:absolute;left:0;right:0;top:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.10),rgba(0,0,0,.22));
+  box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#schoolRule::after{content:"";position:absolute;bottom:0;left:var(--rl,15%);right:var(--rr,15%);height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55) 12%,rgba(255,255,255,.55) 88%,transparent)}
+body:not(.airport) #schoolRule{display:block}
+body:not(.airport) .school::before{display:none}
+body:not(.airport) .school{align-self:center;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35);padding:6px 24px;border-radius:10px;
+  background:linear-gradient(180deg,rgba(6,70,55,.78),rgba(0,38,32,.62));
+  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  border:1px solid rgba(140,230,190,.32);
+  box-shadow:inset 0 1px 0 rgba(180,255,220,.35),inset 0 -1px 0 rgba(255,255,255,.1),0 8px 22px rgba(0,0,0,.3)}
+body:not(.airport) #schoolRule::after{display:none}
+.tb-toggle{position:fixed;left:12px;bottom:14px;z-index:31;width:38px;height:38px;display:grid;place-items:center;border-radius:50%;cursor:pointer;color:#fff;
+  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.06));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 18px rgba(0,0,0,.35);opacity:.55;transition:opacity .2s ease,transform .12s ease}
+.tb-toggle svg{width:18px;height:18px;pointer-events:none}
+.tb-toggle:hover,.tb-toggle:focus-visible,body.tb-open .tb-toggle{opacity:1}
+.tb-toggle:active{transform:scale(.94)}
+.tb-toggle:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
+/* toolbar is hidden until the toggle is hovered/clicked; hides again after a few seconds */
+.toolbar{opacity:0;visibility:hidden;transform:translateX(-10px);transition:opacity .25s ease,transform .25s ease,visibility 0s linear .25s}
+body.tb-open .toolbar{opacity:1;visibility:visible;transform:none;transition:opacity .25s ease,transform .25s ease,visibility 0s}
+body.is-fs.idle:not(.tb-open) .tb-toggle{opacity:0;pointer-events:none}
+/* sound: its own round button in the bottom-right corner, opposite the toolbar toggle */
+.toolbar #soundBtn,#soundBtn.sound-fab{position:fixed;left:auto;right:12px;top:auto;bottom:14px}
+#soundBtn.sound-fab.off{opacity:.9;color:#ffb4b4}
+@media (prefers-reduced-motion:reduce){.toolbar,body.tb-open .toolbar,.tb-toggle{transition:none;transform:none}}
+#voiceStatus{top:auto;bottom:60px;left:auto;right:14px;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.toolbar,.tbtn{transition:none}.tbtn:active{transform:none}}
+
+/* ===== portrait / phone layout ===== */
+/* green: clock card on top (clock beside the time and dates), schedule full width underneath */
+body.portrait:not(.airport) .board{width:520px}
+body.portrait:not(.airport) h1{margin:18px 0 22px;font-size:52px}
+body.portrait:not(.airport) .tablewrap{flex-direction:column;gap:18px;width:100%}
+body.portrait:not(.airport) .side{order:0;flex-direction:row;justify-content:center;gap:26px;min-width:0;padding:18px 22px}
+body.portrait:not(.airport) .side .aclock svg{width:150px;height:150px}
+body.portrait:not(.airport) .side #clock{font-size:36px}
+body.portrait:not(.airport) .side #day{font-size:24px}
+body.portrait:not(.airport) .side .hj{font-size:18px}
+body.portrait:not(.airport) .tablewrap table{order:1;min-width:0;width:100%;font-size:26px}
+body.portrait:not(.airport) .tablewrap td.t{padding-left:28px}
+body.portrait:not(.airport) .school{font-size:26px}
+/* airport: narrower board, no "until" column, compact header */
+body.portrait.airport .board{width:560px}
+body.portrait.airport .until{display:none}
+body.portrait.airport .sh-title{display:none}
+body.portrait.airport .board-top{min-height:84px}
+body.portrait.airport .aclock svg{width:66px;height:66px}
+body.portrait.airport #clockBig{font-size:22px}
+body.portrait.airport .bt-text b{font-size:24px}
+body.portrait.airport .bt-text span{font-size:18px}
+body.portrait.airport .plane{width:54px;height:54px}
+body.portrait.airport .screen > h1{font-size:32px}
+body.portrait.airport table{font-size:22px}
+body.portrait.airport td{padding:8px 10px}
+body.portrait.airport th{padding:5px 10px}
+
+/* short landscape (phone sideways): drop the decorative headers, shrink the clock */
+body.short:not(.airport) h1{margin:6px 0 10px}
+body.short:not(.airport) .school{display:none}
+body.short:not(.airport) #schoolRule{display:none}
+body.short:not(.airport) .side .aclock svg{width:120px;height:120px}
+body.short:not(.airport) .side{padding:14px 18px;gap:10px;min-width:220px}
+body.short:not(.airport) td{padding:5px 14px}
+body.short.airport .board-top{display:none}
+body.short.airport .board{padding:6px}
+body.short.airport td{padding:4px 12px}
+body.short.airport .screen > h1{padding:6px 14px}
+</style>
+</head>
+<body>
+<main>
+ <div id="schoolRule" aria-hidden="true"></div>
+ <div class="board">
+  <div class="board-top"><div class="aclock" aria-hidden="true"><svg viewBox="0 0 100 100"><circle class="face" cx="50" cy="50" r="47" fill="#fff" stroke="#3a3d44" stroke-width="3"/><g class="sticks" stroke="#14161c" stroke-linecap="butt"><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(0 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(6 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(12 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(18 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(24 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(30 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(36 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(42 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(48 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(54 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(60 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(66 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(72 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(78 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(84 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(90 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(96 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(102 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(108 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(114 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(120 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(126 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(132 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(138 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(144 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(150 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(156 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(162 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(168 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(174 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(180 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(186 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(192 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(198 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(204 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(210 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(216 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(222 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(228 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(234 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(240 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(246 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(252 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(258 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(264 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(270 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(276 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(282 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(288 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(294 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(300 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(306 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(312 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(318 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(324 50 50)"/><line x1="50" y1="9" x2="50" y2="21" stroke-width="2.8" transform="rotate(330 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(336 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(342 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(348 50 50)"/><line x1="50" y1="9" x2="50" y2="13" stroke-width="0.9" transform="rotate(354 50 50)"/></g><g class="ticks" stroke="#111" stroke-linecap="round"><line x1="50" y1="6" x2="50" y2="15" stroke-width="4" transform="rotate(0 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(30 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(60 50 50)"/><line x1="50" y1="6" x2="50" y2="15" stroke-width="4" transform="rotate(90 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(120 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(150 50 50)"/><line x1="50" y1="6" x2="50" y2="15" stroke-width="4" transform="rotate(180 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(210 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(240 50 50)"/><line x1="50" y1="6" x2="50" y2="15" stroke-width="4" transform="rotate(270 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(300 50 50)"/><line x1="50" y1="7" x2="50" y2="12" stroke-width="2" transform="rotate(330 50 50)"/></g><line id="hH" x1="50" y1="56" x2="50" y2="27" stroke="#111" stroke-width="6" stroke-linecap="round"/><line id="hM" x1="50" y1="58" x2="50" y2="14" stroke="#111" stroke-width="4" stroke-linecap="round"/><g id="hS"><line x1="50" y1="62" x2="50" y2="20" stroke="#e11d2a" stroke-width="2"/><circle cx="50" cy="20" r="4.5" fill="#e11d2a"/></g><circle class="pin" cx="50" cy="50" r="3.5" fill="#e11d2a"/></svg><span id="clockBig"></span></div><span class="plane"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6a4 4 0 0 1 4 4v2.2c8.6 1.8 14 9 14 18.3V40l5 6v3H9v-3l5-6v-9.5c0-9.3 5.4-16.5 14-18.3V10a4 4 0 0 1 4-4z"/><path d="M25 53h14a7 7 0 0 1-14 0z"/></svg></span><div class="bt-text"><b>الحصص</b><span>SCHEDULE</span></div></div>
+  <div class="screen">
+    <div class="screen-head">
+      <h2 class="school" id="schoolName">الثانوية الثانية بالخبر</h2>
+      <div class="sh-title"><span class="ic"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6a4 4 0 0 1 4 4v2.2c8.6 1.8 14 9 14 18.3V40l5 6v3H9v-3l5-6v-9.5c0-9.3 5.4-16.5 14-18.3V10a4 4 0 0 1 4-4z"/><path d="M25 53h14a7 7 0 0 1-14 0z"/></svg></span> TIMETABLE <span class="gate" id="gate"></span></div>
+    </div>
+    <h1 id="current">—</h1>
+    <div class="tablewrap"><table>
+      <thead><tr><th>الوقت<small>TIME</small></th><th>الحصة<small>PERIOD</small></th><th class="x until">حتى<small>UNTIL</small></th><th class="x">الحالة<small>STATUS</small></th></tr></thead>
+      <tbody id="schedule"></tbody>
+    </table></div>
+    <div class="now"><span id="day"></span><span id="clock"></span></div>
+  </div>
+ </div>
+</main>
+
+<button class="exitfs" id="exitFs" title="الخروج من ملء الشاشة" aria-label="الخروج من ملء الشاشة"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<button class="tb-toggle" id="tbToggle" title="أدوات الشاشة" aria-label="إظهار أدوات الشاشة" aria-expanded="false" aria-controls="toolbar"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+<button class="tb-toggle sound-fab" id="soundBtn" title="الصوت" aria-label="إيقاف الصوت"></button>
+<nav class="toolbar" id="toolbar" aria-label="أدوات الشاشة">
+  <button class="tbtn" id="callBtn" title="نداء"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="8" r="3.5"/><path d="M6.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/><path d="M5.5 5.5a4.5 4.5 0 0 0 0 5"/><path d="M3 3.5a8 8 0 0 0 0 9"/></svg>نداء</button>
+  <button class="tbtn" id="fsBtn" title="ملء الشاشة" aria-label="ملء الشاشة"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>ملء الشاشة</button>
+  <button class="tbtn tb-icon" id="settingsBtn" title="الإعدادات" aria-label="الإعدادات"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span id="settingsLabel" class="sr-only">الإعدادات</span></button>
+</nav>
+<div id="voiceStatus"></div>
+
+<div id="endMsg">انتهى اليوم الدراسي</div>
+<div id="call"><button class="back" id="backBtn">رجوع</button><iframe id="callFrame" title="شاشة النداء" allow="autoplay; fullscreen; speaker-selection" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer"></iframe></div>
+
+<div id="settings" role="dialog" aria-modal="true" aria-label="الإعدادات">
+  <div class="panel">
+    <div class="head"><button class="btn" id="closeBtn">إغلاق ✕</button><h3>توقيت الحصص — واحد لكل الأيام</h3></div>
+    <label class="chk"><input type="checkbox" id="todayOnly"> تغيير عارض لهذا اليوم فقط — يرجع التوقيت الأساسي غدًا تلقائيًا</label>
+    <label class="chk"><input type="checkbox" id="airport"> طابع شاشة المطار (على هذا الجهاز فقط)</label>
+    <div id="g-all"></div>
+    <button class="btn" data-add="all">إضافة حصة (كل الأيام)</button>
+    <hr><h3>أحد واثنين فقط — منها الحصة السابعة</h3>
+    <div id="g-sunmon"></div>
+    <button class="btn" data-add="sunmon">إضافة حصة لأحد واثنين فقط</button>
+    <hr><h3>ثلاثاء إلى خميس فقط</h3>
+    <div id="g-tuethu"></div>
+    <button class="btn" data-add="tuethu">إضافة حصة لثلاثاء-خميس فقط</button>
+    <hr>
+    <label class="field">اسم المدرسة<input type="text" id="school"></label>
+    <label class="field">تفتح شاشة النداء تلقائيًا قبل نهاية الدوام بـ (دقائق)<input type="number" id="callBefore" min="0" max="120" step="1" inputmode="numeric"></label>
+    <p class="hint" id="callPreview"></p>
+    <label class="field">رابط شاشة النداء<input type="url" id="callUrl" dir="ltr"></label>
+    <label class="field">وقت العودة من شاشة النداء (تظهر حينها عبارة «انتهى اليوم الدراسي»)<input type="time" id="returnTime"></label>
+    <label class="field">صوت احتياطي (يعمل فقط إذا تعذّر تشغيل صوت Kore)<select id="voice"><option value="">تلقائي — أفضل صوت أنثوي عربي متوفر على الجهاز</option></select></label>
+    <div class="actions">
+      <button class="btn" id="testCall">تجربة فتح شاشة النداء</button>
+      <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
+      <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const DEFAULTS={
+  school:'الثانوية الثانية بالخبر',
+  all:[['07:15','تبدأ الآن الحصة الأولى'],['08:05','تبدأ الآن الحصة الثانية'],['08:55','تبدأ الآن الحصة الثالثة'],['09:45','تبدأ الآن الفسحة'],['10:10','تبدأ الآن الحصة الرابعة'],['11:00','تبدأ الآن الحصة الخامسة'],['11:50','تبدأ الآن الحصة السادسة']],
+  sunmon:[['12:40','تبدأ الآن الحصة السابعة'],['13:30','نهاية اليوم الدراسي']],
+  tuethu:[['12:40','نهاية اليوم الدراسي']],
+  callBefore:5,callUrl:'https://pro-edit-playhouse.lovable.app/screen',returnTime:'16:00',
+  voice:''
+};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const todayKey=()=>new Date().toDateString();
+// ---- safety helpers ----
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const isTime=v=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+function safeUrl(u){try{const x=new URL(String(u));return (x.protocol==='https:'||x.protocol==='http:')?x.href:null}catch(e){return null}}
+// merge saved settings over the defaults and drop anything malformed, so a bad save can't break the screen
+function sanitize(c){
+  const d=clone(DEFAULTS),o=(c&&typeof c==='object')?c:{};
+  const rows=a=>Array.isArray(a)?a.filter(r=>Array.isArray(r)&&r.length>=2).map(r=>[isTime(r[0])?r[0]:'',String(r[1]).slice(0,120)]):null;
+  ['all','sunmon','tuethu'].forEach(k=>{const v=rows(o[k]);if(v)d[k]=v});
+  if(typeof o.school==='string')d.school=o.school.slice(0,120);
+  if(typeof o.callUrl==='string')d.callUrl=o.callUrl.slice(0,500);
+  if(isTime(o.returnTime))d.returnTime=o.returnTime;
+  if(typeof o.voice==='string')d.voice=o.voice.slice(0,200);
+  const cb=parseInt(o.callBefore,10);if(!isNaN(cb))d.callBefore=Math.max(0,Math.min(120,cb));
+  return d;
+}
+let base=sanitize(store.get('ss-base'));
+let override=store.get('ss-override');
+if(!override||typeof override!=='object'||override.date!==todayKey()) override=null; else override={date:override.date,cfg:sanitize(override.cfg)};
+const cfg=()=>override?override.cfg:base;
+function save(){ store.set('ss-base',base); store.set('ss-override',override); }
+
+const $=id=>document.getElementById(id);
+const label=t=>t.replace(/^تبدأ الآن\s*/,'');
+const toMin=t=>{const[h,m]=t.split(':').map(Number);return h*60+m};
+function todayList(d=new Date()){
+  const c=cfg(),wd=d.getDay(); let l=[...c.all];
+  if(wd<=1) l=l.concat(c.sunmon); else if(wd<=4) l=l.concat(c.tuethu);
+  return l.filter(x=>x[0]).sort((a,b)=>toMin(a[0])-toMin(b[0]));
+}
+
+let soundOn=store.get('ss-sound')!==false,lastAnnounced=null,callFiredFor=null,endFiredFor=null,returnFiredFor=null;
+function render(){
+  const d=new Date(),nm=d.getHours()*60+d.getMinutes(),wd=d.getDay();
+  $('schoolName').textContent=cfg().school||'';
+  let hijri='';
+  try{hijri=new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-arab',{day:'numeric',month:'long',year:'numeric'}).format(d).replace(/\s*هـ$/,'')+' هـ'}catch(e){}
+  $('day').innerHTML=DAYS[wd]+(hijri?'<span class="hj">'+hijri+'</span>':'');
+  const hr=d.getHours()%12,mi=d.getMinutes(),se=d.getSeconds();
+  $('hH').style.transform=`rotate(${hr*30+mi*0.5}deg)`;
+  $('hM').style.transform=`rotate(${mi*6+se*0.1}deg)`;
+  $('hS').style.transform=`rotate(${se*6}deg)`;
+  $('clockBig').textContent=d.toLocaleTimeString('ar-SA-u-nu-arab',{hour:'numeric',minute:'2-digit',hour12:true});
+  $('clock').textContent=d.toLocaleTimeString('ar-SA-u-nu-arab',{hour:'numeric',minute:'2-digit',hour12:true}).replace('ص','ص').replace(/\s*م$/,' م');
+  const list=(wd===5)?[]:todayList(d);
+  let idx=-1; list.forEach((x,i)=>{if(toMin(x[0])<=nm) idx=i});
+  let cur;
+  if(wd===5) cur='إجازة نهاية الأسبوع';
+  else if(idx<0) cur=list.length?'قبل بداية اليوم الدراسي':'لا يوجد دوام';
+  else cur=label(list[idx][1]);
+  $('current').textContent=cur;
+  $('gate').textContent=DAYS[wd];
+  $('schedule').innerHTML=list.map((x,i)=>{
+    const isEnd=/نهاية/.test(x[1]);
+    let cls,st;
+    if(isEnd){cls='end';st=['end',i<=idx?'انتهى الدوام':'نهاية الدوام']}
+    else if(i===idx){cls='active';st=['now','الآن']}
+    else if(i<idx){cls='past';st=['past','انتهت']}
+    else if(i===idx+1){cls='';st=['next','التالية']}
+    else {cls='';st=['later','قادمة']}
+    const until=list[i+1]?list[i+1][0]:'';
+    return `<tr class="${cls}"><td class="t">${esc(x[0])}</td><td>${esc(label(x[1]))}</td><td class="x u until">${isEnd?'':esc(until)}</td><td class="x s"><span class="st ${st[0]}">${st[1]}</span></td></tr>`;
+  }).join('');
+  // announcements
+  const key=d.toDateString()+'|'+idx;
+  if(idx>=0&&lastAnnounced!==null&&lastAnnounced!==key){ flash(); announce(list[idx][1]); }
+  lastAnnounced=key;
+  const hm=d.toTimeString().slice(0,5),day=d.toDateString();
+  const c=cfg();
+  // call screen opens automatically N minutes (default 5) before today's end of the school day
+  const callAt=callMinute(list);
+  if(callAt!=null&&nm===callAt&&callFiredFor!==day){callFiredFor=day;openCall(true)}
+  if(hm===c.returnTime&&returnFiredFor!==day&&callFiredFor===day){returnFiredFor=day;closeCall();$('endMsg').classList.add('open')}
+}
+
+let actx;
+function chime(){
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    [880,660,990].forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.type='sine';
+      const t=actx.currentTime+i*.35;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.03);g.gain.exponentialRampToValueAtTime(.001,t+.6);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.65)});}catch(e){}
+}
+function pickVoice(){
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ar'));
+  const chosen=cfg().voice; if(chosen){const v=vs.find(v=>v.name===chosen);if(v)return v}
+  return vs.find(v=>/female|zeina|laila|hoda|salma|mariam|amira/i.test(v.name))||vs[0]||null;
+}
+function speak(text){
+  if(!('speechSynthesis' in window))return;
+  const u=new SpeechSynthesisUtterance(text);u.lang='ar-SA';const v=pickVoice();if(v)u.voice=v;u.rate=.9;
+  speechSynthesis.cancel();speechSynthesis.speak(u);
+}
+let flashTimer;
+function flash(ms=15000){
+  document.body.classList.remove('flash'); void document.body.offsetWidth;
+  document.body.classList.add('flash');
+  clearTimeout(flashTimer); flashTimer=setTimeout(()=>document.body.classList.remove('flash'),ms);
+}
+function announce(text,force){ if(!soundOn&&!force)return; chime(); setTimeout(()=>speak(text),1100); }
+
+function callBeforeMin(){const v=cfg().callBefore;return v==null||isNaN(v)?5:+v}
+function callMinute(list){const end=list.find(x=>/نهاية/.test(x[1]));return end?toMin(end[0])-callBeforeMin():null}
+const fmt=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+function updateCallPreview(){
+  const sm=new Date(2026,10,22),tu=new Date(2026,10,24); // a Sunday and a Tuesday, only to read each schedule
+  const a=callMinute(todayList(sm)),b=callMinute(todayList(tu));
+  $('callPreview').textContent='بحسب الجدول الحالي: الأحد والاثنين '+(a!=null?fmt(a):'—')+' — الثلاثاء إلى الخميس '+(b!=null?fmt(b):'—');
+}
+function openCall(auto){ const u=safeUrl(cfg().callUrl); if(!u)return; $('endMsg').classList.remove('open'); $('callFrame').src=u; $('call').classList.add('open'); if(auto&&soundOn){unlockAudio();chime()} }
+function closeCall(){ $('call').classList.remove('open'); $('callFrame').src='about:blank'; }
+
+const ICON_ON='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3v6h3.5L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>',ICON_OFF='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3v6h3.5L11 19z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg>';
+// sound is ON by default and remembered; browsers only allow audio after the first interaction on the page,
+// so we try to unlock right away and otherwise unlock on the first click/tap/key anywhere.
+function audioReady(){return !!actx&&actx.state==='running'}
+function unlockAudio(){
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume&&actx.resume().then(updateSoundUI,()=>{})}catch(e){}
+  try{if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}}catch(e){}
+  setTimeout(updateSoundUI,150);
+}
+function updateSoundUI(){
+  const want=soundOn?'on':'off';
+  if($('soundBtn').dataset.state!==want){$('soundBtn').innerHTML=soundOn?ICON_ON:ICON_OFF;$('soundBtn').dataset.state=want}
+  $('soundBtn').classList.toggle('off',!soundOn);
+  $('soundBtn').setAttribute('aria-label',soundOn?'إيقاف الصوت':'تشغيل الصوت');
+  $('soundBtn').title=soundOn?'الصوت يعمل — اضغط للإيقاف':'الصوت متوقف — اضغط للتشغيل';
+  $('voiceStatus').textContent=!soundOn?'':(audioReady()?'':'اضغط في أي مكان على الشاشة لتفعيل الصوت');
+}
+$('soundBtn').onclick=()=>{
+  soundOn=!soundOn; store.set('ss-sound',soundOn);
+  if(soundOn)unlockAudio(); updateSoundUI();
+};
+const firstGesture=()=>{unlockAudio();if(audioReady())['pointerdown','keydown','touchstart'].forEach(ev=>removeEventListener(ev,firstGesture,true))};
+['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,firstGesture,true));
+unlockAudio(); updateSoundUI();
+// Keep the device screen awake (Screen Wake Lock) so a phone/tablet doesn't auto-lock and silence the announcements.
+// Browsers can't run a web page's timers or audio while the screen is locked, so preventing the lock is the reliable fix.
+let wakeLock=null;
+// fallback when the Wake Lock API is missing or blocked (older iOS, or inside an embedding frame):
+// a tiny muted looping video keeps the screen on (technique and media from NoSleep.js, MIT licence)
+let nsVideo=null;
+function noSleepVideo(){
+  if(!nsVideo){nsVideo=document.createElement('video');nsVideo.setAttribute('playsinline','');nsVideo.setAttribute('muted','');nsVideo.muted=true;nsVideo.loop=true;
+    nsVideo.setAttribute('title','');nsVideo.style.cssText='position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:0;top:0';
+    const w=document.createElement('source');w.src='data:video/webm;base64,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';w.type='video/webm';
+    const m=document.createElement('source');m.src='data:video/mp4;base64,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';m.type='video/mp4';
+    nsVideo.append(w,m);document.body.appendChild(nsVideo);}
+  if(nsVideo.paused)nsVideo.play().catch(()=>{});
+}
+async function keepAwake(){
+  if(document.visibilityState!=='visible'||(wakeLock&&!wakeLock.released))return;
+  if('wakeLock' in navigator){
+    try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null});return}catch(e){wakeLock=null}
+  }
+  noSleepVideo();
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();unlockAudio();render()}});
+['pointerdown','touchstart','keydown'].forEach(ev=>addEventListener(ev,keepAwake,{passive:true}));
+keepAwake();
+$('exitFs').onclick=()=>{document.exitFullscreen&&document.exitFullscreen().catch(()=>{})};
+$('fsBtn').onclick=()=>{document.documentElement.requestFullscreen().catch(()=>{})};
+document.addEventListener('fullscreenchange',()=>{document.body.classList.toggle('is-fs',!!document.fullscreenElement);setTimeout(fit,100)});
+$('callBtn').onclick=()=>{$('call').classList.contains('open')?closeCall():openCall()};
+$('backBtn').onclick=closeCall;
+$('endMsg').onclick=()=>$('endMsg').classList.remove('open');
+
+// ---------- settings ----------
+let lastFocus;
+function openSettings(){lastFocus=document.activeElement;fillSettings();$('settings').classList.add('open');$('settingsLabel').textContent='إغلاق الإعدادات';$('closeBtn').focus()}
+function closeSettings(){$('settings').classList.remove('open');$('settingsLabel').textContent='الإعدادات';render();fit();lastFocus&&lastFocus.focus()}
+$('settingsBtn').onclick=()=>$('settings').classList.contains('open')?closeSettings():openSettings();
+$('closeBtn').onclick=closeSettings;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('settings').classList.contains('open'))closeSettings()});
+
+function groupHTML(g){
+  return cfg()[g].map((x,i)=>`<div class="row"><input type="time" aria-label="الوقت" data-g="${g}" data-i="${i}" data-k="0" value="${esc(x[0])}"><input type="text" aria-label="عبارة التنبيه" data-g="${g}" data-i="${i}" data-k="1" value="${esc(x[1])}"><button class="del" data-del="${g}" data-i="${i}">حذف</button></div>`).join('');
+}
+function fillSettings(){
+  const c=cfg();
+  ['all','sunmon','tuethu'].forEach(g=>$('g-'+g).innerHTML=groupHTML(g));
+  $('todayOnly').checked=!!override;
+  $('airport').checked=document.body.classList.contains('airport');
+  ['school','callUrl','returnTime'].forEach(k=>$(k).value=c[k]);
+  $('callBefore').value=callBeforeMin();
+  updateCallPreview();
+  const sel=$('voice');sel.length=1;
+  speechSynthesis&&speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ar')).forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.name)));
+  sel.value=c.voice||'';
+}
+const panel=document.querySelector('.panel');
+panel.addEventListener('input',e=>{
+  const t=e.target,c=cfg();
+  if(t.dataset.g){const k=+t.dataset.k;c[t.dataset.g][+t.dataset.i][k]=k===0?(isTime(t.value)?t.value:''):t.value.slice(0,120)}
+  else if(t.id==='callBefore'){c.callBefore=Math.max(0,Math.min(120,parseInt(t.value,10)||0));updateCallPreview()}
+  else if(t.id==='callUrl'){c.callUrl=t.value.trim().slice(0,500);t.setCustomValidity(safeUrl(c.callUrl)?'':'الرابط يجب أن يبدأ بـ https://');t.reportValidity()}
+  else if(t.id==='returnTime'){if(isTime(t.value))c.returnTime=t.value}
+  else if(['school','voice'].includes(t.id)){c[t.id]=t.value.slice(0,120)}
+  save();render();
+});
+panel.addEventListener('click',e=>{
+  const t=e.target,c=cfg();
+  if(t.dataset.del){c[t.dataset.del].splice(+t.dataset.i,1);save();fillSettings();render()}
+  if(t.dataset.add){c[t.dataset.add].push(['','تبدأ الآن ']);save();fillSettings();const rows=$('g-'+t.dataset.add).querySelectorAll('input[type=time]');rows[rows.length-1].focus()}
+});
+$('todayOnly').onchange=e=>{override=e.target.checked?{date:todayKey(),cfg:clone(base)}:null;save();fillSettings();render()};
+$('airport').onchange=e=>{document.body.classList.toggle('airport',e.target.checked);placeClock();fit();store.set('ss-airport',e.target.checked)};
+$('testCall').onclick=()=>{closeSettings();openCall(true)};
+$('testSound').onclick=()=>{closeSettings();flash();const l=todayList();announce(l.length?l[0][1]:'تجربة الصوت',true)};
+$('resetBtn').onclick=()=>{if(confirm('إرجاع الجدول الأساسي؟ سيتم حذف كل التعديلات.')){base=clone(DEFAULTS);override=null;save();fillSettings();render()}};
+
+if(store.get('ss-airport')!==false)document.body.classList.add('airport');
+if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{if($('settings').classList.contains('open'))fillSettings()};
+// fit the board to the screen: scale up or down so nothing ever scrolls
+let lastRows=-1;
+function fit(){
+  const bd=document.querySelector('.board');
+  bd.style.transform='none';
+  const fsMode=document.body.classList.contains('is-fs');
+  // phones / portrait screens get a stacked layout instead of a shrunken landscape one
+  const portrait=innerWidth/innerHeight<0.85;
+  document.body.classList.toggle('portrait',portrait);
+  // short landscape screens (phone on its side): compact mode that gives the schedule the height
+  const short=!portrait&&innerHeight<520;
+  document.body.classList.toggle('short',short);
+  // fullscreen keeps comfortable side (~4% each) and bottom margins
+  const padX=portrait?Math.max(20,Math.round(innerWidth*0.05)):Math.round(innerWidth*0.08), padTop=short?6:(document.body.classList.contains('airport')?Math.max(34,Math.round(innerHeight*0.045)):14), padBot=short?54:Math.max(68,Math.round(innerHeight*0.06)); // keeps the opened toolbar (≈56px) clear of the cards
+  // green + fullscreen: widen the schedule table so the layout matches the screen's shape and fills its width
+  const tbl=document.querySelector('.tablewrap table');
+  tbl.style.minWidth='';
+  bd.style.width='';
+  if(!portrait&&document.body.classList.contains('airport')){
+    const ratio=(innerWidth-padX)/(innerHeight-padTop-padBot);
+    const want=Math.min(bd.offsetHeight*ratio*1.06,bd.offsetWidth*1.45);
+    if(want>bd.offsetWidth) bd.style.width=Math.round(want)+'px';
+  }
+  if(!portrait&&!document.body.classList.contains('airport')){
+    const ratio=(innerWidth-padX)/(innerHeight-padTop-padBot);
+    const extra=bd.offsetHeight*ratio-bd.offsetWidth;
+    // widen only partway so the table doesn't get large empty gaps; capped at 1.6x its natural width
+    if(extra>0) tbl.style.minWidth=Math.round(Math.min(tbl.offsetWidth+extra*0.55,tbl.offsetWidth*1.6))+'px';
+  }
+  const s=Math.min((innerWidth-padX)/bd.offsetWidth,(innerHeight-padTop-padBot)/bd.offsetHeight);
+  bd.style.transform=`translateY(${(padTop-padBot)/2}px) scale(${s})`;
+  const sr=document.querySelector('.school').getBoundingClientRect();
+  $('schoolRule').style.height=Math.round(sr.bottom+12*s)+'px';
+  $('schoolRule').style.setProperty('--rl',Math.round(sr.left)+'px');
+  $('schoolRule').style.setProperty('--rr',Math.round(innerWidth-sr.right)+'px');
+}
+const _render=render;
+render=function(){_render();const n=$('schedule').rows.length;if(n!==lastRows){lastRows=n;fit()}};
+addEventListener('resize',fit);
+if(document.fonts)document.fonts.ready.then(fit);
+// the analog clock sits in the board header (airport) or in place of the digital time (green)
+// one app icon for both screens (half green/yellow, half blue/white)
+function setAppIcon(){}
+function placeClock(){
+  setAppIcon();
+  const c=document.querySelector('.aclock'),now=document.querySelector('div.now'),wrap=document.querySelector('.tablewrap');
+  let side=document.querySelector('.side');
+  if(!side){side=document.createElement('div');side.className='side';wrap.append(side)}
+  if(document.body.classList.contains('airport')){
+    document.querySelector('.board-top').prepend(c);
+    document.querySelector('.screen').append(now);
+  } else {
+    side.append(c,now);
+  }
+}
+placeClock();
+// toolbar reveal: hover or click the toggle; auto-hide after a few seconds unless pointer/focus is on it
+const TB_MS=4000;let tbT;
+const tbOver=()=>document.querySelector('.toolbar:hover,.tb-toggle:hover')||document.querySelector('.toolbar :focus-visible')||$('settings').classList.contains('open');
+function tbSchedule(){clearTimeout(tbT);tbT=setTimeout(()=>{if(tbOver())tbSchedule();else tbShow(false)},TB_MS)}
+function tbShow(on){document.body.classList.toggle('tb-open',on);$('tbToggle').setAttribute('aria-expanded',on);if(on)tbSchedule();else clearTimeout(tbT)}
+let tbHoverAt=0;
+$('tbToggle').addEventListener('mouseenter',()=>{if(!document.body.classList.contains('tb-open')){tbHoverAt=Date.now();tbShow(true)}});
+// click toggles; a click right after the hover that opened it keeps it open
+$('tbToggle').addEventListener('click',()=>{const open=document.body.classList.contains('tb-open');tbShow(!open||Date.now()-tbHoverAt<700)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('tb-open')&&!$('settings').classList.contains('open'))tbShow(false)});
+['mouseleave','focusout'].forEach(ev=>document.querySelector('.toolbar').addEventListener(ev,tbSchedule));
+document.querySelector('.toolbar').addEventListener('focusin',()=>tbShow(true));
+let idleT;
+function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT=setTimeout(()=>document.body.classList.add('idle'),3000)}
+['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
+render();setInterval(render,1000);
+</script>
+</body>
+</html>
