@@ -375,7 +375,6 @@ body.short.airport .screen > h1{padding:6px 14px}
     <label class="field">اسم المدرسة<input type="text" id="school"></label>
     <label class="field">تفتح شاشة النداء تلقائيًا قبل نهاية الدوام بـ (دقائق)<input type="number" id="callBefore" min="0" max="120" step="1" inputmode="numeric"></label>
     <p class="hint" id="callPreview"></p>
-    <label class="field">رابط شاشة النداء<input type="url" id="callUrl" dir="ltr"></label>
     <label class="field">وقت العودة من شاشة النداء (تظهر حينها عبارة «انتهى اليوم الدراسي»)<input type="time" id="returnTime"></label>
     <label class="field">صوت احتياطي (يعمل فقط إذا تعذّر تشغيل صوت Kore)<select id="voice"><option value="">تلقائي — أفضل صوت أنثوي عربي متوفر على الجهاز</option></select></label>
     <div class="actions">
@@ -581,7 +580,7 @@ function fillSettings(){
   ['all','sunmon','tuethu'].forEach(g=>$('g-'+g).innerHTML=groupHTML(g));
   $('todayOnly').checked=!!override;
   $('airport').checked=document.body.classList.contains('airport');
-  ['school','callUrl','returnTime'].forEach(k=>$(k).value=c[k]);
+  ['school','returnTime'].forEach(k=>$(k).value=c[k]);
   $('callBefore').value=callBeforeMin();
   updateCallPreview();
   const sel=$('voice');sel.length=1;
