@@ -215,13 +215,15 @@ body:not(.airport) .pill:hover{background:linear-gradient(180deg,rgba(255,224,68
 .row{display:flex;gap:8px;align-items:center;margin:10px 0}
 .row input[type=time]{width:144px;flex:none}
 .row input[type=text]{flex:1;min-width:0}
-input[type=time],input[type=text],input[type=url],select{font:15px 'Tajawal',sans-serif;border:1px solid #d1d5db;border-radius:8px;padding:9px 10px;background:#fff;color:#111}
+input[type=time],input[type=text],input[type=url],input[type=number],select{font:15px 'Tajawal',sans-serif;border:1px solid #d1d5db;border-radius:8px;padding:9px 10px;background:#fff;color:#111}
 .del{color:var(--danger);background:none;border:0;font:15px 'Tajawal',sans-serif;cursor:pointer;flex:none;padding:4px}
 hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 .field{display:flex;flex-direction:column;gap:6px;margin:14px 0;font-size:14px}
 .days{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
 .hint{margin:-6px 0 10px;font-size:13px;color:#4b5563}
 .btn.arm{background:#b91c1c !important;color:#fff !important;border-color:#b91c1c !important}
+#callBtn[hidden]{display:none}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 /* call screen */
 #call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
@@ -373,7 +375,8 @@ body.short.airport .screen > h1{padding:6px 14px}
     <button class="btn" data-add="tuethu">إضافة حصة لثلاثاء-خميس فقط</button>
     <hr>
     <label class="field">اسم المدرسة<input type="text" id="school"></label>
-    <label class="field">تفتح شاشة النداء تلقائيًا قبل نهاية الدوام بـ (دقائق)<input type="number" id="callBefore" min="0" max="120" step="1" inputmode="numeric"></label>
+    <label class="chk"><input type="checkbox" id="callEnabled"> تمكين الربط بشاشة النداء (تفتح تلقائيًا قبل نهاية الدوام)</label>
+    <label class="field" id="callBeforeField">تفتح شاشة النداء تلقائيًا قبل نهاية الدوام بـ (دقائق)<input type="number" id="callBefore" min="0" max="120" step="1" inputmode="numeric"></label>
     <p class="hint" id="callPreview"></p>
     <label class="field">وقت العودة من شاشة النداء (تظهر حينها عبارة «انتهى اليوم الدراسي»)<input type="time" id="returnTime"></label>
     <label class="field">صوت احتياطي (يعمل فقط إذا تعذّر تشغيل صوت Kore)<select id="voice"><option value="">تلقائي — أفضل صوت أنثوي عربي متوفر على الجهاز</option></select></label>
@@ -392,7 +395,7 @@ const DEFAULTS={
   all:[['07:15','تبدأ الآن الحصة الأولى'],['08:05','تبدأ الآن الحصة الثانية'],['08:55','تبدأ الآن الحصة الثالثة'],['09:45','تبدأ الآن الفسحة'],['10:10','تبدأ الآن الحصة الرابعة'],['11:00','تبدأ الآن الحصة الخامسة'],['11:50','تبدأ الآن الحصة السادسة']],
   sunmon:[['12:40','تبدأ الآن الحصة السابعة'],['13:30','نهاية اليوم الدراسي']],
   tuethu:[['12:40','نهاية اليوم الدراسي']],
-  callBefore:5,callUrl:'https://pro-edit-playhouse.lovable.app/screen',returnTime:'16:00',
+  callEnabled:true,callBefore:5,callUrl:'https://pro-edit-playhouse.lovable.app/screen',returnTime:'16:00',
   voice:''
 };
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -408,6 +411,7 @@ function sanitize(c){
   const rows=a=>Array.isArray(a)?a.filter(r=>Array.isArray(r)&&r.length>=2).map(r=>[isTime(r[0])?r[0]:'',String(r[1]).slice(0,120)]):null;
   ['all','sunmon','tuethu'].forEach(k=>{const v=rows(o[k]);if(v)d[k]=v});
   if(typeof o.school==='string')d.school=o.school.slice(0,120);
+  if(typeof o.callEnabled==='boolean')d.callEnabled=o.callEnabled;
   if(typeof o.callUrl==='string')d.callUrl=o.callUrl.slice(0,500);
   if(isTime(o.returnTime))d.returnTime=o.returnTime;
   if(typeof o.voice==='string')d.voice=o.voice.slice(0,200);
@@ -469,7 +473,7 @@ function render(){
   const c=cfg();
   // call screen opens automatically N minutes (default 5) before today's end of the school day
   const callAt=callMinute(list);
-  if(callAt!=null&&nm===callAt&&callFiredFor!==day){callFiredFor=day;openCall(true)}
+  if(c.callEnabled!==false&&callAt!=null&&nm===callAt&&callFiredFor!==day){callFiredFor=day;openCall(true)}
   if(hm===c.returnTime&&returnFiredFor!==day&&callFiredFor===day){returnFiredFor=day;closeCall();$('endMsg').classList.add('open')}
 }
 
@@ -498,6 +502,13 @@ function flash(ms=15000){
 }
 function announce(text,force){ if(!soundOn&&!force)return; chime(); setTimeout(()=>speak(text),1100); }
 
+// call-screen link on/off: when off, it never opens automatically and the call button is hidden
+function syncCallUI(){
+  const on=cfg().callEnabled!==false;
+  $('callBtn').hidden=!on; $('testCall').disabled=!on;
+  $('callBeforeField').style.opacity=on?'':'.45'; $('callBefore').disabled=!on;
+  $('callPreview').style.display=on?'':'none';
+}
 function callBeforeMin(){const v=cfg().callBefore;return v==null||isNaN(v)?5:+v}
 function callMinute(list){const end=list.find(x=>/نهاية/.test(x[1]));return end?toMin(end[0])-callBeforeMin():null}
 const fmt=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
@@ -581,6 +592,8 @@ function fillSettings(){
   $('todayOnly').checked=!!override;
   $('airport').checked=document.body.classList.contains('airport');
   ['school','returnTime'].forEach(k=>$(k).value=c[k]);
+  $('callEnabled').checked=c.callEnabled!==false;
+  syncCallUI();
   $('callBefore').value=callBeforeMin();
   updateCallPreview();
   const sel=$('voice');sel.length=1;
@@ -591,6 +604,7 @@ const panel=document.querySelector('.panel');
 panel.addEventListener('input',e=>{
   const t=e.target,c=cfg();
   if(t.dataset.g){const k=+t.dataset.k;c[t.dataset.g][+t.dataset.i][k]=k===0?(isTime(t.value)?t.value:''):t.value.slice(0,120)}
+  else if(t.id==='callEnabled'){c.callEnabled=t.checked;syncCallUI()}
   else if(t.id==='callBefore'){c.callBefore=Math.max(0,Math.min(120,parseInt(t.value,10)||0));updateCallPreview()}
   else if(t.id==='callUrl'){c.callUrl=t.value.trim().slice(0,500);t.setCustomValidity(safeUrl(c.callUrl)?'':'الرابط يجب أن يبدأ بـ https://');t.reportValidity()}
   else if(t.id==='returnTime'){if(isTime(t.value))c.returnTime=t.value}
@@ -604,7 +618,7 @@ panel.addEventListener('click',e=>{
 });
 $('todayOnly').onchange=e=>{override=e.target.checked?{date:todayKey(),cfg:clone(base)}:null;save();fillSettings();render()};
 $('airport').onchange=e=>{document.body.classList.toggle('airport',e.target.checked);placeClock();fit();store.set('ss-airport',e.target.checked)};
-$('testCall').onclick=()=>{closeSettings();openCall(true)};
+$('testCall').onclick=()=>{if(cfg().callEnabled===false)return;closeSettings();openCall(true)};
 $('testSound').onclick=()=>{closeSettings();flash();const l=todayList();announce(l.length?l[0][1]:'تجربة الصوت',true)};
 // reset to the original schedule — in-page two-step confirm (browser confirm() is blocked inside frames / some installed apps)
 let resetArm=null;
@@ -694,6 +708,7 @@ document.querySelector('.toolbar').addEventListener('focusin',()=>tbShow(true));
 let idleT;
 function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT=setTimeout(()=>document.body.classList.add('idle'),3000)}
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
+syncCallUI();
 render();setInterval(render,1000);
 </script>
 </body>
