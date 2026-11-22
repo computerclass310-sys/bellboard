@@ -221,6 +221,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 .field{display:flex;flex-direction:column;gap:6px;margin:14px 0;font-size:14px}
 .days{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
 .hint{margin:-6px 0 10px;font-size:13px;color:#4b5563}
+.btn.arm{background:#b91c1c !important;color:#fff !important;border-color:#b91c1c !important}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 /* call screen */
 #call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
@@ -606,7 +607,20 @@ $('todayOnly').onchange=e=>{override=e.target.checked?{date:todayKey(),cfg:clone
 $('airport').onchange=e=>{document.body.classList.toggle('airport',e.target.checked);placeClock();fit();store.set('ss-airport',e.target.checked)};
 $('testCall').onclick=()=>{closeSettings();openCall(true)};
 $('testSound').onclick=()=>{closeSettings();flash();const l=todayList();announce(l.length?l[0][1]:'تجربة الصوت',true)};
-$('resetBtn').onclick=()=>{if(confirm('إرجاع الجدول الأساسي؟ سيتم حذف كل التعديلات.')){base=clone(DEFAULTS);override=null;save();fillSettings();render()}};
+// reset to the original schedule — in-page two-step confirm (browser confirm() is blocked inside frames / some installed apps)
+let resetArm=null;
+$('resetBtn').onclick=()=>{
+  const btn=$('resetBtn');
+  if(!resetArm){
+    btn.dataset.label=btn.textContent;btn.textContent='اضغط مرة أخرى لتأكيد إرجاع الجدول الأساسي';btn.classList.add('arm');
+    resetArm=setTimeout(()=>{resetArm=null;btn.textContent=btn.dataset.label;btn.classList.remove('arm')},5000);
+    return;
+  }
+  clearTimeout(resetArm);resetArm=null;
+  base=clone(DEFAULTS);override=null;save();fillSettings();render();fit();
+  btn.classList.remove('arm');btn.textContent='✓ تم إرجاع الجدول الأساسي';
+  setTimeout(()=>{btn.textContent=btn.dataset.label},2500);
+};
 
 if(store.get('ss-airport')!==false)document.body.classList.add('airport');
 if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{if($('settings').classList.contains('open'))fillSettings()};
