@@ -224,7 +224,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 .btn.arm{background:#b91c1c !important;color:#fff !important;border-color:#b91c1c !important}
 #callBtn[hidden]{display:none}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-input.locked{background:#f3f4f6 !important;color:#6b7280 !important;cursor:not-allowed;pointer-events:none}
+.locked-box{font:15px 'Tajawal',sans-serif;border:1px solid #e5e7eb;border-radius:8px;padding:9px 10px;background:#f3f4f6;color:#4b5563;cursor:default;user-select:none;-webkit-user-select:none}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 /* call screen */
 #call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
@@ -375,7 +375,7 @@ body.short.airport .screen > h1{padding:6px 14px}
     <div id="g-tuethu"></div>
     <button class="btn" data-add="tuethu">إضافة حصة لثلاثاء-خميس فقط</button>
     <hr>
-    <label class="field">اسم المدرسة (ثابت — غير قابل للتعديل)<input type="text" id="school" readonly aria-readonly="true" tabindex="-1" class="locked"></label>
+    <div class="field">اسم المدرسة (ثابت — غير قابل للتعديل)<div id="school" class="locked-box" aria-label="اسم المدرسة"></div></div>
     <label class="chk"><input type="checkbox" id="callEnabled"> تمكين الربط بشاشة النداء (تفتح تلقائيًا قبل نهاية الدوام)</label>
     <label class="field" id="callBeforeField">تفتح شاشة النداء تلقائيًا قبل نهاية الدوام بـ (دقائق)<input type="number" id="callBefore" min="0" max="120" step="1" inputmode="numeric"></label>
     <p class="hint" id="callPreview"></p>
@@ -593,7 +593,7 @@ function fillSettings(){
   $('todayOnly').checked=!!override;
   $('airport').checked=document.body.classList.contains('airport');
   ['returnTime'].forEach(k=>$(k).value=c[k]);
-  $('school').value=DEFAULTS.school;
+  $('school').textContent=DEFAULTS.school;
   $('callEnabled').checked=c.callEnabled!==false;
   syncCallUI();
   $('callBefore').value=callBeforeMin();
