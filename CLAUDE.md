@@ -23,6 +23,7 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
   A reload loses the browser's permission to speak, so app updates are **not** auto-applied during school hours
   (`inSchoolHours()`), only after the day ends. If speech is blocked (`not-allowed`) a red "tap to enable" hint shows;
   a stuck engine is retried once; settings show the last speech result (`lastSpeech`).
+  The silent unlock utterance at load detects a blocked engine early, so the hint shows before the first period.
 - Only one open copy per device announces a period start (`announceOnce`: Web Locks, localStorage fallback).
 - One audio channel: never two sounds at once. `stopAllSound()` cancels chime + speech + pending steps;
   a new announcement is ignored while one plays; the auto call screen stops any announcement, plays the

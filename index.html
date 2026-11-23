@@ -415,7 +415,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-6</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-7</p>
   </div>
 </div>
 
@@ -707,7 +707,12 @@ const ICON_ON='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="c
 function audioReady(){return !!actx&&actx.state==='running'}
 function unlockAudio(){
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume&&actx.resume().then(updateSoundUI,()=>{})}catch(e){}
-  try{if(HAS_TTS()&&!speechSynthesis.speaking&&!announcing){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}}catch(e){}
+  // the silent utterance also tells us early whether the browser allows speech on this page:
+  // if it is refused ('not-allowed'), show the tap hint right away instead of after a silent announcement
+  try{if(HAS_TTS()&&!speechSynthesis.speaking&&!announcing){const u=new SpeechSynthesisUtterance(' ');u.volume=0;
+    u.onerror=e=>{if(e&&e.error==='not-allowed'){speechBlocked=true;updateSoundUI()}};
+    u.onstart=u.onend=()=>{if(speechBlocked){speechBlocked=false;updateSoundUI()}};
+    speechSynthesis.speak(u)}}catch(e){}
   setTimeout(updateSoundUI,150);
 }
 function updateSoundUI(){
@@ -979,7 +984,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-6';
+const APP_VERSION='2026.11.24-7';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
