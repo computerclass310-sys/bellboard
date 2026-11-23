@@ -1,7 +1,7 @@
 # BellBoard — notes for Claude Code
 
 School period display screen (Arabic, RTL) published with GitHub Pages:
-https://computerclass310-sys.github.io/bellboard/ (short link: https://v.gd/bellboard)
+https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.com/bellboard-sss)
 
 ## Layout
 - `index.html` — the whole app (HTML + CSS + JS in one file, no build step).
