@@ -24,7 +24,8 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
   chime, then opens (so the call page's own sound never overlaps ours); turning sound off stops everything.
 - Two themes: green (classic) and airport board; the layout scales to any screen with no scrolling,
   and has portrait (phone) and short-landscape modes.
-- Schedule: Sun/Mon 7 periods (end 13:30), Tue–Thu 6 periods (end 12:40).
+- Schedule: Sun/Mon 7 periods (end 13:30), Tue–Thu 6 periods (end 12:40). Weekend = Friday + Saturday (no schedule, sound or call).
+- Must keep working with no text-to-speech, no storage, offline or API down — guard with `HAS_TTS()`; `render` runs inside `safeRender`.
 - Call screen opens automatically N minutes (default 5) before the day's end; it can be turned off in settings.
 - School name is fixed and not editable in settings.
 - User text is escaped before rendering; the call URL must be http(s); saved settings are sanitised.
