@@ -408,7 +408,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-7</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-8</p>
   </div>
 </div>
 
@@ -735,7 +735,7 @@ async function publishShared(){
   btn.disabled=false;btn.textContent=label;syncStatus();
 }
 $('publishBtn').onclick=publishShared;
-$('pullBtn').onclick=()=>{syncMsg=null;pullShared(true).then(()=>{syncMsg=['ok','✓ تم التحديث الفوري من الجدول المشترك.'];syncStatus()})};
+$('pullBtn').onclick=()=>{syncMsg=null;pullShared(true).then(()=>{syncMsg=['ok','✓ تم التحديث الفوري من الجدول المصدر'];syncStatus()})};
 // check the shared schedule every 5 s (unchanged answers are tiny 304s)
 setInterval(()=>pullShared(),5*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullShared()});
@@ -814,7 +814,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-7';
+const APP_VERSION='2026.11.23-8';
 async function checkUpdate(){
   try{
     const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
