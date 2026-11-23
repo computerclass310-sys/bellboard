@@ -15,6 +15,8 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://v.gd/bell
 
 ## Behaviour to keep
 - Flashing (period start) is only inside the schedule table — never the title/banner.
+- Announcement = `sounds/chime.mp3` → spoken text → `sounds/chime.mp3` (built-in synth chime only as fallback).
+  Schedule changes (sync/settings) must not trigger an announcement: `save()` resets `lastAnnounced`.
 - Two themes: green (classic) and airport board; the layout scales to any screen with no scrolling,
   and has portrait (phone) and short-landscape modes.
 - Schedule: Sun/Mon 7 periods (end 13:30), Tue–Thu 6 periods (end 12:40).

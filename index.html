@@ -408,7 +408,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-11</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-12</p>
   </div>
 </div>
 
@@ -446,7 +446,8 @@ let base=sanitize(store.get('ss-base'));
 let override=store.get('ss-override');
 if(!override||typeof override!=='object'||override.date!==todayKey()) override=null; else override={date:override.date,cfg:sanitize(override.cfg)};
 const cfg=()=>override?override.cfg:base;
-function save(){ store.set('ss-base',base); store.set('ss-override',override); }
+// saving a schedule change re-bases the 'current period' tracker so the change itself never triggers a chime/flash
+function save(){ store.set('ss-base',base); store.set('ss-override',override); if(typeof lastAnnounced!=='undefined')lastAnnounced=null; }
 
 const $=id=>document.getElementById(id);
 const label=t=>t.replace(/^تبدأ الآن\s*/,'');
@@ -501,22 +502,45 @@ function render(){
   if(hm===c.returnTime&&returnFiredFor!==day&&callFiredFor===day){returnFiredFor=day;closeCall();$('endMsg').classList.add('open')}
 }
 
-let actx;
-function chime(){
-  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
-    [880,660,990].forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.type='sine';
-      const t=actx.currentTime+i*.35;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.03);g.gain.exponentialRampToValueAtTime(.001,t+.6);
-      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.65)});}catch(e){}
+let actx, chimeBuf=null, chimeLoading=null;
+// the announcement chime is sounds/chime.mp3 (decoded once into the shared AudioContext);
+// if it can't be loaded, a short built-in three-note chime is used instead
+function loadChime(){
+  if(chimeBuf||chimeLoading)return chimeLoading;
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}
+  chimeLoading=fetch('sounds/chime.mp3').then(r=>r.ok?r.arrayBuffer():Promise.reject())
+    .then(b=>new Promise((ok,no)=>actx.decodeAudioData(b,ok,no))).then(buf=>{chimeBuf=buf}).catch(()=>{chimeLoading=null});
+  return chimeLoading;
+}
+function synthChime(){
+  [880,660,990].forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.type='sine';
+    const t=actx.currentTime+i*.35;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.03);g.gain.exponentialRampToValueAtTime(.001,t+.6);
+    o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.65)});
+}
+// plays the chime and calls done() when it has finished
+function chime(done){
+  let called=false;const fin=()=>{if(!called){called=true;done&&done()}};
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(chimeBuf){const src=actx.createBufferSource();src.buffer=chimeBuf;src.connect(actx.destination);src.onended=fin;src.start();
+      setTimeout(fin,chimeBuf.duration*1000+800);return}   // safety net if 'ended' never fires
+    synthChime();
+  }catch(e){}
+  setTimeout(fin,1100);
 }
 function pickVoice(){
   const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ar'));
   const chosen=cfg().voice; if(chosen){const v=vs.find(v=>v.name===chosen);if(v)return v}
   return vs.find(v=>/female|zeina|laila|hoda|salma|mariam|amira/i.test(v.name))||vs[0]||null;
 }
-function speak(text){
-  if(!('speechSynthesis' in window))return;
+// speaks the text and calls done() when finished (or after a safety timeout)
+function speak(text,done){
+  let called=false;const fin=()=>{if(!called){called=true;done&&done()}};
+  if(!('speechSynthesis' in window)){fin();return}
   const u=new SpeechSynthesisUtterance(text);u.lang='ar-SA';const v=pickVoice();if(v)u.voice=v;u.rate=.9;
+  u.onend=fin;u.onerror=fin;
   speechSynthesis.cancel();speechSynthesis.speak(u);
+  setTimeout(fin,Math.max(4000,text.length*180));
 }
 let flashTimer;
 function flash(ms=15000){
@@ -524,7 +548,12 @@ function flash(ms=15000){
   document.body.classList.add('flash');
   clearTimeout(flashTimer); flashTimer=setTimeout(()=>document.body.classList.remove('flash'),ms);
 }
-function announce(text,force){ if(!soundOn&&!force)return; chime(); setTimeout(()=>speak(text),1100); }
+// announcement: chime → spoken text → chime
+let announcing=false;
+function announce(text,force){
+  if((!soundOn&&!force)||announcing)return;announcing=true;
+  chime(()=>speak(text,()=>chime(()=>{announcing=false})));
+}
 
 // call-screen link on/off: when off, it never opens automatically and the call button is hidden
 function syncCallUI(){
@@ -568,6 +597,7 @@ $('soundBtn').onclick=()=>{
 const firstGesture=()=>{unlockAudio();if(audioReady())['pointerdown','keydown','touchstart'].forEach(ev=>removeEventListener(ev,firstGesture,true))};
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,firstGesture,true));
 unlockAudio(); updateSoundUI();
+loadChime();
 // Keep the device screen awake (Screen Wake Lock) so a phone/tablet doesn't auto-lock and silence the announcements.
 // Browsers can't run a web page's timers or audio while the screen is locked, so preventing the lock is the reliable fix.
 let wakeLock=null;
@@ -814,7 +844,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-11';
+const APP_VERSION='2026.11.23-12';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
