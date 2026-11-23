@@ -449,7 +449,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-11</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-12</p>
   </div>
 </div>
 
@@ -658,7 +658,7 @@ function recordingFor(text){return voiceIndex&&voiceIndex[normPhrase(text)]||nul
 function loadRecording(file){
   if(voiceBufs[file])return voiceBufs[file];
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){return Promise.reject(e)}
-  voiceBufs[file]=fetch('sounds/voice/'+file).then(r=>r.ok?r.arrayBuffer():Promise.reject(new Error('missing')))
+  voiceBufs[file]=fetch('sounds/voice/'+file+'?v='+APP_VERSION).then(r=>r.ok?r.arrayBuffer():Promise.reject(new Error('missing')))
     .then(b=>new Promise((ok,no)=>actx.decodeAudioData(b,ok,no))).catch(e=>{delete voiceBufs[file];throw e});
   return voiceBufs[file];
 }
@@ -1061,7 +1061,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-11';
+const APP_VERSION='2026.11.24-12';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
