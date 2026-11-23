@@ -410,7 +410,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-15</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-16</p>
   </div>
 </div>
 
@@ -807,8 +807,10 @@ async function publishShared(){
 }
 $('publishBtn').onclick=publishShared;
 $('pullBtn').onclick=()=>{syncMsg=null;pullShared(true).then(()=>{syncMsg=['ok','✓ تم التحديث الفوري من الجدول المصدر'];syncStatus()})};
-// check the shared schedule every 5 s (unchanged answers are tiny 304s)
-setInterval(()=>pullShared(),5*1000);
+// check the shared schedule every 3 s (unchanged answers are tiny 304s that don't use GitHub's rate limit)
+setInterval(()=>pullShared(),3*1000);
+// and immediately when the screen comes back online or gets focus
+addEventListener('online',()=>{pullShared();checkUpdate()});addEventListener('focus',()=>pullShared());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullShared()});
 if(store.get('ss-airport')!==false)document.body.classList.add('airport');
 if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{if($('settings').classList.contains('open'))fillSettings()};
@@ -885,7 +887,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-15';
+const APP_VERSION='2026.11.23-16';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
@@ -913,7 +915,7 @@ async function checkUpdate(){
     if(r.ok&&verOf(await r.text())===v)location.replace(location.pathname+'?v='+encodeURIComponent(v));
   }catch(e){}
 }
-setTimeout(checkUpdate,3000);setInterval(checkUpdate,30*1000);
+setTimeout(checkUpdate,2000);setInterval(checkUpdate,15*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate()});
 render();setInterval(render,1000);
 pullShared();
