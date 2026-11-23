@@ -28,4 +28,4 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://v.gd/bell
   Publishing from settings writes it via the GitHub contents API using a fine-grained token typed into
   settings and kept only in that device's localStorage (never commit a token).
   Unpublished local edits are kept (marked "dirty") and are not overwritten by the shared file.
-- Device-only settings (localStorage): theme, sound on/off, fallback voice, "today only" override.
+- Device-only settings (localStorage): theme, sound on/off, voice gender (default male) and specific voice, "today only" override.

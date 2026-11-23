@@ -394,7 +394,9 @@ body.short.airport .screen > h1{padding:6px 14px}
     <label class="field" id="callBeforeField">تفتح شاشة النداء تلقائيًا قبل نهاية الدوام بـ (دقائق)<input type="number" id="callBefore" min="0" max="120" step="1" inputmode="numeric"></label>
     <p class="hint" id="callPreview"></p>
     <label class="field">وقت العودة من شاشة النداء (تظهر حينها عبارة «انتهى اليوم الدراسي»)<input type="time" id="returnTime"></label>
-    <label class="field">صوت احتياطي (يعمل فقط إذا تعذّر تشغيل صوت Kore)<select id="voice"><option value="">تلقائي — أفضل صوت أنثوي عربي متوفر على الجهاز</option></select></label>
+    <label class="field">صوت القراءة<select id="voiceGender"><option value="male">صوت رجل</option><option value="female">صوت امرأة</option></select></label>
+    <label class="field">صوت محدد (اختياري)<select id="voice"><option value="">تلقائي — أفضل صوت عربي متوفر بالنوع المختار</option></select></label>
+    <p class="hint">الأصوات المتاحة تختلف حسب الجهاز. إذا لم يتوفر صوت رجل عربي على الجهاز، يُستخدم أقرب صوت عربي متاح.</p>
     <hr><h3>المزامنة مع كل الأجهزة</h3>
     <p class="hint sync-status" id="syncStatus"></p>
     <label class="field">مفتاح النشر (يُحفظ على هذا الجهاز فقط — يحتاجه من يعدّل الجدول للجميع)<input type="password" id="syncToken" autocomplete="off" spellcheck="false" dir="ltr" placeholder="github_pat_…"></label>
@@ -408,7 +410,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-12</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-13</p>
   </div>
 </div>
 
@@ -528,10 +530,16 @@ function chime(done){
   }catch(e){}
   setTimeout(fin,1100);
 }
+// Arabic voice choice: device setting (default male). Browsers don't expose a voice's gender,
+// so known male / female Arabic voice names are matched.
+const MALE_AR=/maged|majed|naayf|hamed|shakir|tarik|fahed|hamdan|omar|ahmad|ahmed|male(?!.*female)|ar-xa-x-ard|ar-xa-x-are/i;
+const FEMALE_AR=/female|zeina|laila|layla|hoda|salma|mariam|amira|zariyah|amany|fatima|sana|dalia|ar-xa-x-arz|ar-xa-x-arc/i;
+const voiceGender=()=>store.get('ss-voice-gender')==='female'?'female':'male';
 function pickVoice(){
-  const vs=speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ar'));
+  const vs=speechSynthesis.getVoices().filter(v=>v.lang&&v.lang.toLowerCase().startsWith('ar'));
   const chosen=cfg().voice; if(chosen){const v=vs.find(v=>v.name===chosen);if(v)return v}
-  return vs.find(v=>/female|zeina|laila|hoda|salma|mariam|amira/i.test(v.name))||vs[0]||null;
+  const want=voiceGender()==='male'?MALE_AR:FEMALE_AR, avoid=voiceGender()==='male'?FEMALE_AR:MALE_AR;
+  return vs.find(v=>want.test(v.name))||vs.find(v=>!avoid.test(v.name))||vs[0]||null;
 }
 // speaks the text and calls done() when finished (or after a safety timeout)
 function speak(text,done){
@@ -653,6 +661,7 @@ function fillSettings(){
   syncCallUI();
   $('callBefore').value=callBeforeMin();
   updateCallPreview();
+  $('voiceGender').value=voiceGender();
   const sel=$('voice');sel.length=1;
   speechSynthesis&&speechSynthesis.getVoices().filter(v=>v.lang.startsWith('ar')).forEach(v=>sel.add(new Option(v.name+' ('+v.lang+')',v.name)));
   sel.value=c.voice||'';
@@ -666,6 +675,7 @@ panel.addEventListener('input',e=>{
   else if(t.id==='callBefore'){c.callBefore=Math.max(0,Math.min(120,parseInt(t.value,10)||0));updateCallPreview();if(!override)markDirty()}
   else if(t.id==='callUrl'){c.callUrl=t.value.trim().slice(0,500);t.setCustomValidity(safeUrl(c.callUrl)?'':'الرابط يجب أن يبدأ بـ https://');t.reportValidity()}
   else if(t.id==='returnTime'){if(isTime(t.value)){c.returnTime=t.value;if(!override)markDirty()}}
+  else if(t.id==='voiceGender'){store.set('ss-voice-gender',t.value==='female'?'female':'male');c.voice='';$('voice').value='';}
   else if(t.id==='voice'){c.voice=t.value.slice(0,120)}
   save();render();
 });
@@ -844,7 +854,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-12';
+const APP_VERSION='2026.11.23-13';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
