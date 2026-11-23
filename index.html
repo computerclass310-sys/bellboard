@@ -397,6 +397,7 @@ body.short.airport .screen > h1{padding:6px 14px}
     <label class="field">وقت العودة من شاشة النداء (تظهر حينها عبارة «انتهى اليوم الدراسي»)<input type="time" id="returnTime"></label>
     <label class="field">صوت القراءة<select id="voiceGender"><option value="female">صوت امرأة</option><option value="male">صوت رجل</option></select></label>
     <label class="field">صوت محدد (اختياري)<select id="voice"><option value="">تلقائي — أفضل صوت عربي متوفر بالنوع المختار</option></select></label>
+    <p class="hint" id="deviceInfo"></p>
     <p class="hint" id="voiceInfo"></p>
     <hr><h3>المزامنة مع كل الأجهزة</h3>
     <p class="hint sync-status" id="syncStatus"></p>
@@ -411,7 +412,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-2</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-3</p>
   </div>
 </div>
 
@@ -563,7 +564,19 @@ function pickVoice(){
   if(vs[0]){vs[0].__lowFit=true;return vs[0]}
   return null;
 }
+// plain-language description of this device and browser, shown in settings
+function deviceInfo(){
+  const ua=navigator.userAgent||'',pl=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
+  const os=/iPad|iPhone|iPod/.test(ua)||(/Mac/.test(pl)&&navigator.maxTouchPoints>1)?(/iPad/.test(ua)||navigator.maxTouchPoints>1&&!/iPhone/.test(ua)?'iPad':'iPhone')
+    :/Android/.test(ua)?(/TV|AFT|BRAVIA|SMART-TV|SmartTV/i.test(ua)?'شاشة ذكية (Android TV)':'Android')
+    :/Tizen|Web0S|WebOS|SMART-TV|SmartTV/i.test(ua)?'شاشة تلفاز ذكية'
+    :/CrOS/.test(ua)?'Chromebook':/Win/.test(pl+ua)?'كمبيوتر Windows':/Mac/.test(pl+ua)?'كمبيوتر Mac':/Linux/.test(pl+ua)?'كمبيوتر Linux':'جهاز غير معروف';
+  const br=/Edg\//.test(ua)?'Microsoft Edge':/OPR\//.test(ua)?'Opera':/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome\//.test(ua)?'Google Chrome':/FxiOS|Firefox\//.test(ua)?'Firefox':/Safari\//.test(ua)?'Safari':'متصفح آخر';
+  return {os,br};
+}
 function updateVoiceInfo(){
+  const di=$('deviceInfo');if(di){const d=deviceInfo();const n=HAS_TTS()?arVoices().length:0;
+    di.textContent='هذا الجهاز: '+d.os+' — المتصفح: '+d.br+' — عدد الأصوات العربية المثبتة: '+n+(d.os==='كمبيوتر Windows'&&d.br!=='Microsoft Edge'?' (نصيحة: افتح التطبيق في Microsoft Edge لصوت امرأة أوضح)':'');}
   const el=$('voiceInfo');if(!el)return;const v=(HAS_TTS())?pickVoice():null;
   if(!v){el.textContent='لا يوجد صوت عربي مثبّت على هذا الجهاز — ثبّت صوتًا عربيًا من إعدادات الجهاز.';return}
   const isMale=MALE_AR.test(v.name)&&!FEMALE_AR.test(v.name);
@@ -934,7 +947,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-2';
+const APP_VERSION='2026.11.24-3';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
