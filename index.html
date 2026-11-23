@@ -226,6 +226,14 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 #callBtn[hidden]{display:none}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .locked-box{font:15px 'Tajawal',sans-serif;border:1px solid #e5e7eb;border-radius:8px;padding:9px 10px;background:#f3f4f6;color:#4b5563;cursor:default;user-select:none;-webkit-user-select:none}
+/* settings header: title on the right, close (×) pinned in the top-left corner and always visible while scrolling */
+.panel .head{position:sticky;top:-20px;z-index:2;margin:-20px -20px 8px;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;border-radius:16px 16px 0 0}
+.ptitle{margin:0;font-size:19px;font-weight:800}
+.closex{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;border:1px solid #e5e7eb;background:#f3f4f6;color:#111;cursor:pointer}
+.closex svg{width:20px;height:20px}
+.closex:hover{background:#e5e7eb}
+.closex:active{transform:scale(.94)}
+.closex:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 /* call screen */
 #call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
@@ -364,7 +372,8 @@ body.short.airport .screen > h1{padding:6px 14px}
 
 <div id="settings" role="dialog" aria-modal="true" aria-label="الإعدادات">
   <div class="panel">
-    <div class="head"><button class="btn" id="closeBtn">إغلاق ✕</button><h3>توقيت الحصص — واحد لكل الأيام</h3></div>
+    <div class="head"><h2 class="ptitle">الإعدادات</h2><button class="closex" id="closeBtn" aria-label="إغلاق الإعدادات" title="إغلاق"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <h3>توقيت الحصص — واحد لكل الأيام</h3>
     <label class="chk"><input type="checkbox" id="todayOnly"> تغيير عارض لهذا اليوم فقط — يرجع التوقيت الأساسي غدًا تلقائيًا</label>
     <label class="chk"><input type="checkbox" id="airport"> طابع شاشة المطار (على هذا الجهاز فقط)</label>
     <div id="g-all"></div>
@@ -387,7 +396,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-1</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-2</p>
   </div>
 </div>
 
@@ -714,7 +723,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-1';
+const APP_VERSION='2026.11.23-2';
 async function checkUpdate(){
   try{
     const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
