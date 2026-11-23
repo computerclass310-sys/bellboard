@@ -408,7 +408,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-10</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-11</p>
   </div>
 </div>
 
@@ -602,7 +602,7 @@ $('endMsg').onclick=()=>$('endMsg').classList.remove('open');
 // ---------- settings ----------
 let lastFocus;
 function openSettings(){lastFocus=document.activeElement;fillSettings();$('settings').classList.add('open');$('settingsLabel').textContent='إغلاق الإعدادات';$('closeBtn').focus()}
-function closeSettings(){syncMsg=null;$('settings').classList.remove('open');setTimeout(()=>pullShared(),0);$('settingsLabel').textContent='الإعدادات';render();fit();lastFocus&&lastFocus.focus()}
+function closeSettings(){syncMsg=null;$('settings').classList.remove('open');setTimeout(()=>{pullShared();if(pendingVersion)checkUpdate()},0);$('settingsLabel').textContent='الإعدادات';render();fit();lastFocus&&lastFocus.focus()}
 $('settingsBtn').onclick=()=>$('settings').classList.contains('open')?closeSettings():openSettings();
 $('closeBtn').onclick=closeSettings;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('settings').classList.contains('open'))closeSettings()});
@@ -814,15 +814,35 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-10';
+const APP_VERSION='2026.11.23-11';
+// Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
+// changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
+// version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
+let updEtag=null, updPausedUntil=0, pendingVersion=null;
+const verOf=t=>{const m=t.match(/const APP_VERSION='([^']+)'/);return m?m[1]:null};
+async function latestVersion(){
+  if(Date.now()>updPausedUntil){
+    try{
+      const h={Accept:'application/vnd.github.raw+json'};if(updEtag)h['If-None-Match']=updEtag;
+      const r=await fetch('https://api.github.com/repos/'+REPO+'/contents/index.html?ref=main',{headers:h,cache:'no-store'});
+      if(r.status===304)return pendingVersion;
+      if(r.ok){updEtag=r.headers.get('ETag');return verOf(await r.text())}
+      if(r.status===403||r.status===429){const reset=+r.headers.get('X-RateLimit-Reset');updPausedUntil=reset?reset*1000:Date.now()+10*60*1000}
+    }catch(e){updPausedUntil=Date.now()+60*1000}
+  }
+  try{const r=await fetch(location.pathname+'?check='+Date.now(),{cache:'no-store'});return r.ok?verOf(await r.text()):null}catch(e){return null}
+}
 async function checkUpdate(){
+  const v=await latestVersion();
+  if(!v||v===APP_VERSION){pendingVersion=null;return}
+  pendingVersion=v;
+  if($('settings').classList.contains('open')||$('call').classList.contains('open'))return;  // retried on close
   try{
-    const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
-    const m=(await r.text()).match(/const APP_VERSION='([^']+)'/);
-    if(m&&m[1]!==APP_VERSION&&!$('settings').classList.contains('open')&&!$('call').classList.contains('open'))location.reload();
+    const r=await fetch(location.pathname+'?v='+encodeURIComponent(v)+'&t='+Date.now(),{cache:'no-store'});
+    if(r.ok&&verOf(await r.text())===v)location.replace(location.pathname+'?v='+encodeURIComponent(v));
   }catch(e){}
 }
-setTimeout(checkUpdate,3000);setInterval(checkUpdate,10*60*1000);
+setTimeout(checkUpdate,3000);setInterval(checkUpdate,30*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate()});
 render();setInterval(render,1000);
 pullShared();

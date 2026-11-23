@@ -10,7 +10,8 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://v.gd/bell
 ## Publishing
 - Commit and push to `main`; GitHub Pages redeploys in about a minute.
 - **Always bump `APP_VERSION`** in `index.html` (and the matching "الإصدار …" text in settings)
-  with every change — open screens compare it and reload themselves automatically.
+  with every change — open screens check it every 30 s (GitHub API + ETag, falling back to the site),
+  wait until the site serves the new version, then reload via `?v=<version>`.
 
 ## Behaviour to keep
 - Flashing (period start) is only inside the schedule table — never the title/banner.
