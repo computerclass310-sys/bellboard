@@ -234,6 +234,10 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 .closex:hover{background:#e5e7eb}
 .closex:active{transform:scale(.94)}
 .closex:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
+.sync-status{padding:8px 10px;border-radius:8px;background:#f3f4f6;margin:0 0 6px}
+.sync-status.warn{background:#fef3c7;color:#92400e}
+.sync-status.ok{background:#dcfce7;color:#166534}
+.sync-status.err{background:#fee2e2;color:#991b1b}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 /* call screen */
 #call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
@@ -391,12 +395,20 @@ body.short.airport .screen > h1{padding:6px 14px}
     <p class="hint" id="callPreview"></p>
     <label class="field">وقت العودة من شاشة النداء (تظهر حينها عبارة «انتهى اليوم الدراسي»)<input type="time" id="returnTime"></label>
     <label class="field">صوت احتياطي (يعمل فقط إذا تعذّر تشغيل صوت Kore)<select id="voice"><option value="">تلقائي — أفضل صوت أنثوي عربي متوفر على الجهاز</option></select></label>
+    <hr><h3>المزامنة مع كل الأجهزة</h3>
+    <p class="hint sync-status" id="syncStatus"></p>
+    <label class="field">مفتاح النشر (يُحفظ على هذا الجهاز فقط — يحتاجه من يعدّل الجدول للجميع)<input type="password" id="syncToken" autocomplete="off" spellcheck="false" dir="ltr" placeholder="github_pat_…"></label>
+    <div class="actions" style="margin-top:6px">
+      <button class="btn" id="publishBtn">نشر الجدول لكل الأجهزة</button>
+      <button class="btn" id="pullBtn">تحميل الجدول المشترك</button>
+    </div>
+    <hr>
     <div class="actions">
       <button class="btn" id="testCall">تجربة فتح شاشة النداء</button>
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-2</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-3</p>
   </div>
 </div>
 
@@ -590,7 +602,7 @@ $('endMsg').onclick=()=>$('endMsg').classList.remove('open');
 // ---------- settings ----------
 let lastFocus;
 function openSettings(){lastFocus=document.activeElement;fillSettings();$('settings').classList.add('open');$('settingsLabel').textContent='إغلاق الإعدادات';$('closeBtn').focus()}
-function closeSettings(){$('settings').classList.remove('open');$('settingsLabel').textContent='الإعدادات';render();fit();lastFocus&&lastFocus.focus()}
+function closeSettings(){syncMsg=null;$('settings').classList.remove('open');setTimeout(()=>pullShared(),0);$('settingsLabel').textContent='الإعدادات';render();fit();lastFocus&&lastFocus.focus()}
 $('settingsBtn').onclick=()=>$('settings').classList.contains('open')?closeSettings():openSettings();
 $('closeBtn').onclick=closeSettings;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('settings').classList.contains('open'))closeSettings()});
@@ -605,6 +617,8 @@ function fillSettings(){
   $('airport').checked=document.body.classList.contains('airport');
   ['returnTime'].forEach(k=>$(k).value=c[k]);
   $('school').textContent=DEFAULTS.school;
+  $('syncToken').value=store.get('ss-token')||'';
+  syncStatus();
   $('callEnabled').checked=c.callEnabled!==false;
   syncCallUI();
   $('callBefore').value=callBeforeMin();
@@ -616,18 +630,19 @@ function fillSettings(){
 const panel=document.querySelector('.panel');
 panel.addEventListener('input',e=>{
   const t=e.target,c=cfg();
-  if(t.dataset.g){const k=+t.dataset.k;c[t.dataset.g][+t.dataset.i][k]=k===0?(isTime(t.value)?t.value:''):t.value.slice(0,120)}
-  else if(t.id==='callEnabled'){c.callEnabled=t.checked;syncCallUI()}
-  else if(t.id==='callBefore'){c.callBefore=Math.max(0,Math.min(120,parseInt(t.value,10)||0));updateCallPreview()}
+  if(t.id==='syncToken'){store.set('ss-token',t.value.trim());return}
+  if(t.dataset.g){const k=+t.dataset.k;c[t.dataset.g][+t.dataset.i][k]=k===0?(isTime(t.value)?t.value:''):t.value.slice(0,120);if(!override)markDirty()}
+  else if(t.id==='callEnabled'){c.callEnabled=t.checked;syncCallUI();if(!override)markDirty()}
+  else if(t.id==='callBefore'){c.callBefore=Math.max(0,Math.min(120,parseInt(t.value,10)||0));updateCallPreview();if(!override)markDirty()}
   else if(t.id==='callUrl'){c.callUrl=t.value.trim().slice(0,500);t.setCustomValidity(safeUrl(c.callUrl)?'':'الرابط يجب أن يبدأ بـ https://');t.reportValidity()}
-  else if(t.id==='returnTime'){if(isTime(t.value))c.returnTime=t.value}
+  else if(t.id==='returnTime'){if(isTime(t.value)){c.returnTime=t.value;if(!override)markDirty()}}
   else if(t.id==='voice'){c.voice=t.value.slice(0,120)}
   save();render();
 });
 panel.addEventListener('click',e=>{
   const t=e.target,c=cfg();
-  if(t.dataset.del){c[t.dataset.del].splice(+t.dataset.i,1);save();fillSettings();render()}
-  if(t.dataset.add){c[t.dataset.add].push(['','تبدأ الآن ']);save();fillSettings();const rows=$('g-'+t.dataset.add).querySelectorAll('input[type=time]');rows[rows.length-1].focus()}
+  if(t.dataset.del){c[t.dataset.del].splice(+t.dataset.i,1);if(!override)markDirty();save();fillSettings();render()}
+  if(t.dataset.add){c[t.dataset.add].push(['','تبدأ الآن ']);if(!override)markDirty();save();fillSettings();const rows=$('g-'+t.dataset.add).querySelectorAll('input[type=time]');rows[rows.length-1].focus()}
 });
 $('todayOnly').onchange=e=>{override=e.target.checked?{date:todayKey(),cfg:clone(base)}:null;save();fillSettings();render()};
 $('airport').onchange=e=>{document.body.classList.toggle('airport',e.target.checked);placeClock();fit();store.set('ss-airport',e.target.checked)};
@@ -643,11 +658,66 @@ $('resetBtn').onclick=()=>{
     return;
   }
   clearTimeout(resetArm);resetArm=null;
-  base=clone(DEFAULTS);override=null;save();fillSettings();render();fit();
+  base=clone(DEFAULTS);override=null;markDirty();save();fillSettings();render();fit();
   btn.classList.remove('arm');btn.textContent='✓ تم إرجاع الجدول الأساسي';
   setTimeout(()=>{btn.textContent=btn.dataset.label},2500);
 };
 
+// ===== shared schedule: one schedule.json in the GitHub repo, read by every device =====
+// Reading needs nothing. Publishing writes schedule.json through the GitHub API with a personal access token
+// that is typed into settings and kept only on that device (never in the page source).
+const REPO='computerclass310-sys/bellboard', SHARED_FILE='schedule.json';
+const SHARED_KEYS=['all','sunmon','tuethu','callEnabled','callBefore','returnTime'];
+let dirty=!!store.get('ss-dirty'), sharedStamp=store.get('ss-shared-stamp'), syncMsg=null;
+const pickShared=c=>{const o={};SHARED_KEYS.forEach(k=>o[k]=clone(c[k]));return o};
+// first run of the sync version: keep any edits already made on this device so they can be published
+if(store.get('ss-sync-init')==null){store.set('ss-sync-init',true);if(JSON.stringify(pickShared(base))!==JSON.stringify(pickShared(DEFAULTS))){dirty=true;store.set('ss-dirty',true)}}
+function markDirty(){dirty=true;store.set('ss-dirty',true);syncMsg=null;syncStatus()}
+function syncStatus(){
+  const el=$('syncStatus');if(!el)return;el.className='hint sync-status';
+  if(syncMsg){el.textContent=syncMsg[1];el.classList.add(syncMsg[0]);return}
+  if(dirty){el.textContent='لديك تعديلات على هذا الجهاز لم تُنشر بعد. اضغط «نشر الجدول لكل الأجهزة» لتصل لكل الشاشات.';el.classList.add('warn');return}
+  if(sharedStamp){const d=new Date(sharedStamp);el.textContent='هذا الجهاز متزامن مع الجدول المشترك — آخر نشر: '+d.toLocaleString('ar-SA-u-nu-latn',{dateStyle:'medium',timeStyle:'short'});el.classList.add('ok');return}
+  el.textContent='هذا الجهاز يستخدم الجدول الأساسي.';
+}
+async function pullShared(force){
+  if(!force&&(dirty||$('settings').classList.contains('open')))return syncStatus();
+  try{
+    const r=await fetch(SHARED_FILE+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+    const j=await r.json();if(!j||typeof j.settings!=='object')return;
+    base=sanitize(Object.assign({},base,j.settings));
+    dirty=false;store.set('ss-dirty',false);sharedStamp=j.updated||null;store.set('ss-shared-stamp',sharedStamp);save();
+    lastRows=-1;render();if($('settings').classList.contains('open'))fillSettings();syncStatus();
+  }catch(e){}
+}
+const b64=str=>{const u=new TextEncoder().encode(str);let x='';for(let i=0;i<u.length;i++)x+=String.fromCharCode(u[i]);return btoa(x)};
+async function publishShared(){
+  const token=($('syncToken').value||store.get('ss-token')||'').trim();
+  if(!token){syncMsg=['err','أدخل مفتاح النشر أولًا.'];return syncStatus()}
+  store.set('ss-token',token);
+  const btn=$('publishBtn'),label=btn.textContent;btn.disabled=true;btn.textContent='جارٍ النشر…';
+  const api='https://api.github.com/repos/'+REPO+'/contents/'+SHARED_FILE;
+  const h={Authorization:'Bearer '+token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  try{
+    let sha;const g=await fetch(api+'?ref=main&t='+Date.now(),{headers:h,cache:'no-store'});
+    if(g.status===401)throw new Error('auth');
+    if(g.ok)sha=(await g.json()).sha;else if(g.status!==404)throw new Error('perm');
+    const stamp=new Date().toISOString();
+    const body={message:'Update shared schedule from BellBoard settings',branch:'main',content:b64(JSON.stringify({updated:stamp,settings:pickShared(base)},null,2)+'\n')};
+    if(sha)body.sha=sha;
+    const r=await fetch(api,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},h),body:JSON.stringify(body)});
+    if(r.status===401)throw new Error('auth');if(!r.ok)throw new Error('perm');
+    dirty=false;store.set('ss-dirty',false);sharedStamp=stamp;store.set('ss-shared-stamp',stamp);
+    syncMsg=['ok','✓ تم النشر. يصل الجدول الجديد لكل الأجهزة خلال دقيقتين تقريبًا.'];
+  }catch(e){
+    syncMsg=['err',e.message==='auth'?'مفتاح النشر غير صحيح أو منتهي الصلاحية.':e.message==='perm'?'المفتاح لا يملك صلاحية الكتابة على مستودع bellboard.':'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.'];
+  }
+  btn.disabled=false;btn.textContent=label;syncStatus();
+}
+$('publishBtn').onclick=publishShared;
+$('pullBtn').onclick=()=>{syncMsg=null;pullShared(true).then(()=>{syncMsg=['ok','✓ تم تحميل الجدول المشترك.'];syncStatus()})};
+setInterval(()=>pullShared(),5*60*1000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullShared()});
 if(store.get('ss-airport')!==false)document.body.classList.add('airport');
 if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{if($('settings').classList.contains('open'))fillSettings()};
 // fit the board to the screen: scale up or down so nothing ever scrolls
@@ -723,7 +793,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-2';
+const APP_VERSION='2026.11.23-3';
 async function checkUpdate(){
   try{
     const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
@@ -734,6 +804,7 @@ async function checkUpdate(){
 setTimeout(checkUpdate,3000);setInterval(checkUpdate,10*60*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate()});
 render();setInterval(render,1000);
+pullShared();
 </script>
 </body>
 </html>
