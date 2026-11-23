@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="L"><rect x="0" y="0" width="256" height="512"/></clipPath>
+    <clipPath id="R"><rect x="256" y="0" width="256" height="512"/></clipPath>
+  </defs>
+  <!-- right half: green & yellow (the green screen) -->
+  <g clip-path="url(#R)">
+  <defs>
+    <linearGradient id="g_bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d4f3e"/><stop offset="1" stop-color="#00241e"/>
+    </linearGradient>
+    <linearGradient id="g_gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe979"/><stop offset="1" stop-color="#f2c400"/>
+    </linearGradient>
+    <linearGradient id="g_gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g_bg)"/>
+  <!-- bell -->
+  <g transform="translate(256 250)">
+    <path fill="url(#g_gold)" d="M0-170c13 0 23 10 23 23v12c55 12 90 58 90 117v60l32 38v19H-145v-19l32-38v-60c0-59 35-105 90-117v-12c0-13 10-23 23-23z"/>
+    <path fill="url(#g_gold)" d="M-44 117h88a44 44 0 0 1-88 0z"/>
+    <!-- clock face inside the bell (enlarged) -->
+    <g transform="translate(0 4) scale(1.32) translate(0 -10)">
+    <circle cx="0" cy="10" r="62" fill="#f3eee4" stroke="#063a31" stroke-width="8"/>
+    <g stroke="#063a31" stroke-linecap="round">
+      <line x1="0" y1="-42" x2="0" y2="-32" stroke-width="7"/>
+      <line x1="0" y1="52" x2="0" y2="62" stroke-width="7"/>
+      <line x1="-52" y1="10" x2="-42" y2="10" stroke-width="7"/>
+      <line x1="42" y1="10" x2="52" y2="10" stroke-width="7"/>
+      <line x1="0" y1="10" x2="0" y2="-26" stroke-width="9"/>
+      <line x1="0" y1="10" x2="26" y2="24" stroke-width="9"/>
+    </g>
+    <circle cx="0" cy="10" r="7" fill="#063a31"/></g>
+  </g>
+</g>
+  <!-- left half: blue & white (the airport screen) -->
+  <g clip-path="url(#L)">
+  <defs>
+    <linearGradient id="a_bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14325a"/><stop offset="1" stop-color="#050c1a"/>
+    </linearGradient>
+    <linearGradient id="a_gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fd8f7"/><stop offset="1" stop-color="#1590cf"/>
+    </linearGradient>
+    <linearGradient id="a_gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#a_bg)"/>
+  <!-- bell -->
+  <g transform="translate(256 250)">
+    <path fill="url(#a_gold)" d="M0-170c13 0 23 10 23 23v12c55 12 90 58 90 117v60l32 38v19H-145v-19l32-38v-60c0-59 35-105 90-117v-12c0-13 10-23 23-23z"/>
+    <path fill="url(#a_gold)" d="M-44 117h88a44 44 0 0 1-88 0z"/>
+    <!-- clock face inside the bell (enlarged) -->
+    <g transform="translate(0 4) scale(1.32) translate(0 -10)">
+    <circle cx="0" cy="10" r="62" fill="#ffffff" stroke="#0b1f3a" stroke-width="8"/>
+    <g stroke="#0b1f3a" stroke-linecap="round">
+      <line x1="0" y1="-42" x2="0" y2="-32" stroke-width="7"/>
+      <line x1="0" y1="52" x2="0" y2="62" stroke-width="7"/>
+      <line x1="-52" y1="10" x2="-42" y2="10" stroke-width="7"/>
+      <line x1="42" y1="10" x2="52" y2="10" stroke-width="7"/>
+      <line x1="0" y1="10" x2="0" y2="-26" stroke-width="9"/>
+      <line x1="0" y1="10" x2="26" y2="24" stroke-width="9"/>
+    </g>
+    <circle cx="0" cy="10" r="7" fill="#0b1f3a"/></g>
+  </g>
+</g>
+</svg>

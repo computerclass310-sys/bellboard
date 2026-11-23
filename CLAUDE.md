@@ -6,6 +6,8 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
 ## Layout
 - `index.html` — the whole app (HTML + CSS + JS in one file, no build step).
 - `manifest.webmanifest`, `icons/` — home-screen app name and icons.
+- `ui-kit/` — screenshots, design guide (`DESIGN.md`) and a ready Lovable prompt (`LOVABLE_PROMPT.md`).
+  Re-capture the screenshots when the UI changes.
 
 ## Publishing
 - Commit and push to `main`; GitHub Pages redeploys in about a minute.
