@@ -96,7 +96,7 @@ body:not(.airport) tr.active td{background:rgba(255,224,68,.14)}
 body:not(.airport) tr.active td:first-child{border-radius:0 10px 10px 0;box-shadow:inset -4px 0 0 #ffe044}
 body:not(.airport) tr.active td:last-child{border-radius:10px 0 0 10px}
 body:not(.airport) .side .aclock{display:flex;position:static;transform:none}
-body:not(.airport) .side .aclock svg{width:270px;height:270px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.45))}
+body:not(.airport) .side .aclock svg{width:310px;height:310px;filter:drop-shadow(0 10px 24px rgba(0,0,0,.45))}
 /* green-theme clock: railway-station style (off-white face, dark rim, minute ticks, bar hands) */
 .aclock .sticks{display:none}
 body:not(.airport) .aclock .sticks{display:inline}
@@ -307,7 +307,7 @@ body.portrait:not(.airport) .board{width:520px}
 body.portrait:not(.airport) h1{margin:18px 0 22px;font-size:52px}
 body.portrait:not(.airport) .tablewrap{flex-direction:column;gap:18px;width:100%}
 body.portrait:not(.airport) .side{order:0;flex-direction:row;justify-content:center;gap:26px;min-width:0;padding:18px 22px}
-body.portrait:not(.airport) .side .aclock svg{width:175px;height:175px}
+body.portrait:not(.airport) .side .aclock svg{width:200px;height:200px}
 body.portrait:not(.airport) .side #clock{font-size:36px}
 body.portrait:not(.airport) .side #day{font-size:24px}
 body.portrait:not(.airport) .side .hj{font-size:18px}
@@ -412,7 +412,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-3</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-4</p>
   </div>
 </div>
 
@@ -947,7 +947,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-3';
+const APP_VERSION='2026.11.24-4';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
