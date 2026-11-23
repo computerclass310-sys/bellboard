@@ -408,7 +408,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-3</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-4</p>
   </div>
 </div>
 
@@ -708,7 +708,7 @@ async function publishShared(){
     const r=await fetch(api,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},h),body:JSON.stringify(body)});
     if(r.status===401)throw new Error('auth');if(!r.ok)throw new Error('perm');
     dirty=false;store.set('ss-dirty',false);sharedStamp=stamp;store.set('ss-shared-stamp',stamp);
-    syncMsg=['ok','✓ تم النشر. يصل الجدول الجديد لكل الأجهزة خلال دقيقتين تقريبًا.'];
+    syncMsg=['ok','✓ تم النشر. يظهر على باقي الأجهزة خلال دقيقة تقريبًا.'];
   }catch(e){
     syncMsg=['err',e.message==='auth'?'مفتاح النشر غير صحيح أو منتهي الصلاحية.':e.message==='perm'?'المفتاح لا يملك صلاحية الكتابة على مستودع bellboard.':'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.'];
   }
@@ -716,7 +716,8 @@ async function publishShared(){
 }
 $('publishBtn').onclick=publishShared;
 $('pullBtn').onclick=()=>{syncMsg=null;pullShared(true).then(()=>{syncMsg=['ok','✓ تم تحميل الجدول المشترك.'];syncStatus()})};
-setInterval(()=>pullShared(),5*60*1000);
+// check the shared schedule every 15 s (a ~1 KB static file on GitHub Pages, so frequent checks are cheap)
+setInterval(()=>pullShared(),15*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullShared()});
 if(store.get('ss-airport')!==false)document.body.classList.add('airport');
 if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{if($('settings').classList.contains('open'))fillSettings()};
@@ -793,7 +794,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-3';
+const APP_VERSION='2026.11.23-4';
 async function checkUpdate(){
   try{
     const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
