@@ -240,6 +240,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 .sync-status.ok{background:#dcfce7;color:#166534}
 .sync-status.err{background:#fee2e2;color:#991b1b}
 tr.empty td{text-align:center !important;padding:48px 24px !important;opacity:.85;font-weight:500;border:0 !important}
+#voiceStatus.alert{font-size:15px;font-weight:700;color:#fff;background:rgba(185,28,28,.85);padding:6px 12px;border-radius:999px;bottom:62px}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 /* call screen */
 #call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
@@ -400,6 +401,7 @@ body.short.airport .screen > h1{padding:6px 14px}
     <label class="field">صوت محدد (اختياري)<select id="voice"><option value="">تلقائي — أفضل صوت عربي متوفر بالنوع المختار</option></select></label>
     <p class="hint" id="deviceInfo"></p>
     <p class="hint" id="voiceInfo"></p>
+    <p class="hint" id="speechInfo"></p>
     <hr><h3>المزامنة مع كل الأجهزة</h3>
     <p class="hint sync-status" id="syncStatus"></p>
     <label class="field">مفتاح النشر (يُحفظ على هذا الجهاز فقط — يحتاجه من يعدّل الجدول للجميع)<input type="password" id="syncToken" autocomplete="off" spellcheck="false" dir="ltr" placeholder="github_pat_…"></label>
@@ -413,7 +415,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-5</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-6</p>
   </div>
 </div>
 
@@ -576,7 +578,15 @@ function deviceInfo(){
   const br=/Edg\//.test(ua)?'Microsoft Edge':/OPR\//.test(ua)?'Opera':/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome\//.test(ua)?'Google Chrome':/FxiOS|Firefox\//.test(ua)?'Firefox':/Safari\//.test(ua)?'Safari':'متصفح آخر';
   return {os,br};
 }
+function updateSpeechInfo(){
+  const el=$('speechInfo');if(!el)return;
+  if(!lastSpeech){el.textContent='آخر قراءة صوتية: لم تتم قراءة بعد — اضغط «تجربة التنبيه والصوت».';return}
+  const t=new Date(lastSpeech.at).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'2-digit',minute:'2-digit'});
+  const why={'not-allowed':'المتصفح منع القراءة — يلزم الضغط على الشاشة مرة','no-arabic-voice':'لا يوجد صوت عربي مثبّت على الجهاز','no-start':'محرك القراءة لم يبدأ','no-tts':'هذا المتصفح لا يدعم القراءة الصوتية','synthesis-failed':'فشل محرك القراءة','network':'الصوت يحتاج إنترنت','language-unavailable':'اللغة العربية غير متاحة للقراءة','voice-unavailable':'الصوت المختار غير متاح'};
+  el.textContent='آخر قراءة صوتية ('+t+'): '+(lastSpeech.ok?'نجحت بصوت '+lastSpeech.voice:'لم تنجح — '+(why[lastSpeech.why]||lastSpeech.why));
+}
 function updateVoiceInfo(){
+  updateSpeechInfo();
   const di=$('deviceInfo');if(di){const d=deviceInfo();const n=HAS_TTS()?arVoices().length:0;
     di.textContent='هذا الجهاز: '+d.os+' — المتصفح: '+d.br+' — عدد الأصوات العربية المثبتة: '+n+(d.os==='كمبيوتر Windows'&&d.br!=='Microsoft Edge'?' (نصيحة: افتح التطبيق في Microsoft Edge لصوت امرأة أوضح)':'');}
   const el=$('voiceInfo');if(!el)return;const v=(HAS_TTS())?pickVoice():null;
@@ -596,18 +606,36 @@ function voicesReady(){
     speechSynthesis.addEventListener('voiceschanged',function h(){if(arVoices().length){clearTimeout(t);speechSynthesis.removeEventListener('voiceschanged',h);res()}});
   });
 }
+// last speech attempt, shown in settings for diagnosis
+let speechBlocked=false, lastSpeech=null;
 function speak(text,done){
   let called=false;const fin=()=>{if(!called){called=true;done&&done()}};
-  if(!(HAS_TTS())){fin();return}
+  if(!(HAS_TTS())){lastSpeech={ok:false,why:'no-tts',at:Date.now()};fin();return}
   voicesReady().then(()=>{
     if(called)return;
-    const u=new SpeechSynthesisUtterance(text);const v=pickVoice();
-    if(v){u.voice=v;u.lang=v.lang}else u.lang='ar-SA';
-    u.rate=.9;
-    if(v&&voiceGender()==='female'&&MALE_AR.test(v.name)&&!FEMALE_AR.test(v.name))u.pitch=1.45;
-    u.onend=fin;u.onerror=fin;
-    speechSynthesis.cancel();speechSynthesis.speak(u);
-    setTimeout(fin,Math.max(6000,text.length*220));
+    let started=false,attempt=0;
+    const go=()=>{
+      attempt++;
+      const u=new SpeechSynthesisUtterance(text);const v=pickVoice();
+      if(v){u.voice=v;u.lang=v.lang}else u.lang='ar-SA';
+      u.rate=.9;
+      if(v&&voiceGender()==='female'&&MALE_AR.test(v.name)&&!FEMALE_AR.test(v.name))u.pitch=1.45;
+      u.onstart=()=>{started=true;speechBlocked=false;lastSpeech={ok:true,voice:v?v.name:'(افتراضي)',at:Date.now()};updateSoundUI()};
+      u.onend=()=>{if(!started)lastSpeech={ok:true,voice:v?v.name:'(افتراضي)',at:Date.now()};fin()};
+      u.onerror=e=>{
+        const why=(e&&e.error)||'error';
+        if(why==='interrupted'||why==='canceled'){fin();return}
+        lastSpeech={ok:false,why,voice:v?v.name:null,at:Date.now()};
+        if(why==='not-allowed'){speechBlocked=true;updateSoundUI()}
+        fin();
+      };
+      try{speechSynthesis.cancel();if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.speak(u)}
+      catch(e){lastSpeech={ok:false,why:'exception',at:Date.now()};fin();return}
+      // Chrome sometimes leaves speech stuck without starting: retry once, then give up so the chime still follows
+      setTimeout(()=>{if(!started&&!called){if(attempt<2)go();else{lastSpeech={ok:false,why:arVoices().length?'no-start':'no-arabic-voice',at:Date.now()};fin()}}},2500);
+    };
+    go();
+    setTimeout(fin,Math.max(9000,text.length*220));
   });
 }
 let flashTimer;
@@ -688,14 +716,16 @@ function updateSoundUI(){
   $('soundBtn').classList.toggle('off',!soundOn);
   $('soundBtn').setAttribute('aria-label',soundOn?'إيقاف الصوت':'تشغيل الصوت');
   $('soundBtn').title=soundOn?'الصوت يعمل — اضغط للإيقاف':'الصوت متوقف — اضغط للتشغيل';
-  $('voiceStatus').textContent=!soundOn?'':(audioReady()?'':'اضغط في أي مكان على الشاشة لتفعيل الصوت');
+  $('voiceStatus').textContent=!soundOn?'':(!audioReady()?'اضغط في أي مكان على الشاشة لتفعيل الصوت':speechBlocked?'اضغط مرة على الشاشة لتفعيل القراءة الصوتية':'');
+  $('voiceStatus').classList.toggle('alert',soundOn&&(speechBlocked||!audioReady()));
 }
 $('soundBtn').onclick=()=>{
   soundOn=!soundOn; store.set('ss-sound',soundOn); if(!soundOn)stopAllSound();
   if(soundOn)unlockAudio(); updateSoundUI();
 };
-const firstGesture=()=>{unlockAudio();if(audioReady())['pointerdown','keydown','touchstart'].forEach(ev=>removeEventListener(ev,firstGesture,true))};
+const firstGesture=()=>{unlockAudio();if(speechBlocked){speechBlocked=false;updateSoundUI()}if(audioReady())['pointerdown','keydown','touchstart'].forEach(ev=>removeEventListener(ev,firstGesture,true))};
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,firstGesture,true));
+['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{if(speechBlocked){speechBlocked=false;unlockAudio();updateSoundUI()}},true));
 unlockAudio(); updateSoundUI();
 loadChime();
 // Keep the device screen awake (Screen Wake Lock) so a phone/tablet doesn't auto-lock and silence the announcements.
@@ -949,7 +979,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-5';
+const APP_VERSION='2026.11.24-6';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
@@ -967,16 +997,24 @@ async function latestVersion(){
   }
   try{const r=await fetch(location.pathname+'?check='+Date.now(),{cache:'no-store'});return r.ok?verOf(await r.text()):null}catch(e){return null}
 }
-async function checkUpdate(){
+// school hours on school days: from 30 min before the first entry until 15 min after the end of the day
+function inSchoolHours(){
+  const d=new Date(),l=todayList(d);if(!l.length)return false;
+  const nm=d.getHours()*60+d.getMinutes(),first=toMin(l[0][0])-30,last=toMin(l[l.length-1][0])+15;
+  return nm>=first&&nm<=last;
+}
+async function checkUpdate(manual){
   const v=await latestVersion();
   if(!v||v===APP_VERSION){pendingVersion=null;return}
   pendingVersion=v;
   if($('settings').classList.contains('open')||$('call').classList.contains('open')||announcing||document.body.classList.contains('flash'))return;  // retried later
+  if(inSchoolHours()&&!manual){showUpdateNote(v);return}   // applied after school, or by tapping the note
   try{
     const r=await fetch(location.pathname+'?v='+encodeURIComponent(v)+'&t='+Date.now(),{cache:'no-store'});
     if(r.ok&&verOf(await r.text())===v)location.replace(location.pathname+'?v='+encodeURIComponent(v));
   }catch(e){}
 }
+function showUpdateNote(v){const n=$('appVersion');if(n)n.textContent='BellBoard — الإصدار '+APP_VERSION+' • يتوفر تحديث ('+v+') وسيُطبَّق بعد نهاية الدوام';}
 setTimeout(checkUpdate,2000);setInterval(checkUpdate,15*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate()});
 const safeRender=()=>{try{render()}catch(e){console.error('render',e)}};

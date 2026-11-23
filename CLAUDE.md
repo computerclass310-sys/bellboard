@@ -12,7 +12,7 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
 ## Publishing
 - Commit and push to `main`; GitHub Pages redeploys in about a minute.
 - **Always bump `APP_VERSION`** in `index.html` (and the matching "الإصدار …" text in settings)
-  with every change — open screens check it every 15 s (GitHub API + ETag, falling back to the site),
+  with every change — open screens check it every 15 s (outside school hours) (GitHub API + ETag, falling back to the site),
   wait until the site serves the new version, then reload via `?v=<version>`.
 
 ## Behaviour to keep
@@ -20,6 +20,9 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
 - Announcement = `sounds/chime.mp3` → spoken text → `sounds/chime.mp3` (built-in synth chime only as fallback).
   Schedule changes (sync/settings) must not trigger an announcement: `save()` resets `lastAnnounced`.
 - Speech waits for voices to load and uses the chosen voice's own `lang` (else iOS falls back to its default male voice).
+  A reload loses the browser's permission to speak, so app updates are **not** auto-applied during school hours
+  (`inSchoolHours()`), only after the day ends. If speech is blocked (`not-allowed`) a red "tap to enable" hint shows;
+  a stuck engine is retried once; settings show the last speech result (`lastSpeech`).
 - Only one open copy per device announces a period start (`announceOnce`: Web Locks, localStorage fallback).
 - One audio channel: never two sounds at once. `stopAllSound()` cancels chime + speech + pending steps;
   a new announcement is ignored while one plays; the auto call screen stops any announcement, plays the
