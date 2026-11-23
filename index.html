@@ -168,7 +168,8 @@ body.is-fs .fs{visibility:hidden}
 .exitfs:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
 body.is-fs .exitfs{display:block}
 /* airport-style flashing when a new period starts */
-@keyframes boardFlash{0%,100%{background:#fff;color:#0a1a2e}50%{background:#1b4a7a;color:#fff}}
+/* airport row flash: bright sky blue <-> the board's dark blue */
+@keyframes boardFlash{0%,100%{background:#1fa3e0;color:#fff}50%{background:#0e2a4d;color:#cfe9f8}}
 @keyframes bannerFlash{0%,100%{background:#fff;color:#0a1a2e}50%{background:#0c2a4a;color:#fff}}
 @keyframes textFlash{0%,100%{opacity:1}50%{opacity:.1}}
 body.airport.flash tbody tr.active td{animation:boardFlash .8s steps(1) infinite}
@@ -179,7 +180,7 @@ body.airport.flash tbody tr.active td .st{background:#1fbf5b;color:#04220f}
 /* flashing happens only inside the schedule table */
 body.flash:not(.airport) tr.active td{animation:greenRowFlash .8s steps(1) infinite}
 @media (prefers-reduced-motion:reduce){
-  body.airport.flash tbody tr.active td{animation:none;background:#fff;color:#0a1a2e}
+  body.airport.flash tbody tr.active td{animation:none;background:#1fa3e0;color:#fff}
   body.flash:not(.airport) .screen > h1,body.flash:not(.airport) tr.active td{animation:none}
   body.flash:not(.airport) tr.active td{background:#ffe044;color:#07332e}
 }
@@ -410,7 +411,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-16</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-18</p>
   </div>
 </div>
 
@@ -494,7 +495,7 @@ function render(){
   }).join('');
   // announcements
   const key=d.toDateString()+'|'+idx;
-  if(idx>=0&&lastAnnounced!==null&&lastAnnounced!==key){ flash(); announce(list[idx][1]); }
+  if(idx>=0&&lastAnnounced!==null&&lastAnnounced!==key){ flash(); announceOnce(key,list[idx][1]); }
   lastAnnounced=key;
   const hm=d.toTimeString().slice(0,5),day=d.toDateString();
   const c=cfg();
@@ -561,20 +562,58 @@ function updateVoiceInfo(){
   el.textContent='الصوت المستخدم على هذا الجهاز: '+v.name+(voiceGender()==='female'&&isMale?' — لا يوجد صوت امرأة عربي على هذا الجهاز، فرُفعت نبرة الصوت المتاح. لصوت امرأة حقيقي ثبّته من إعدادات الجهاز (انظر المساعدة).':'');
 }
 // speaks the text and calls done() when finished (or after a safety timeout)
+// Voices load asynchronously; speaking before they're ready makes the browser use its default
+// (often a man's voice on iPhone). So wait for them, and use the chosen voice's own language tag,
+// otherwise iOS ignores the chosen voice.
+function voicesReady(){
+  return new Promise(res=>{
+    if(!('speechSynthesis' in window))return res();
+    if(arVoices().length)return res();
+    const t=setTimeout(res,2500);
+    speechSynthesis.addEventListener('voiceschanged',function h(){if(arVoices().length){clearTimeout(t);speechSynthesis.removeEventListener('voiceschanged',h);res()}});
+  });
+}
 function speak(text,done){
   let called=false;const fin=()=>{if(!called){called=true;done&&done()}};
   if(!('speechSynthesis' in window)){fin();return}
-  const u=new SpeechSynthesisUtterance(text);u.lang='ar-SA';const v=pickVoice();if(v)u.voice=v;u.rate=.9;
-  if(v&&voiceGender()==='female'&&MALE_AR.test(v.name)&&!FEMALE_AR.test(v.name))u.pitch=1.45;
-  u.onend=fin;u.onerror=fin;
-  speechSynthesis.cancel();speechSynthesis.speak(u);
-  setTimeout(fin,Math.max(4000,text.length*180));
+  voicesReady().then(()=>{
+    if(called)return;
+    const u=new SpeechSynthesisUtterance(text);const v=pickVoice();
+    if(v){u.voice=v;u.lang=v.lang}else u.lang='ar-SA';
+    u.rate=.9;
+    if(v&&voiceGender()==='female'&&MALE_AR.test(v.name)&&!FEMALE_AR.test(v.name))u.pitch=1.45;
+    u.onend=fin;u.onerror=fin;
+    speechSynthesis.cancel();speechSynthesis.speak(u);
+    setTimeout(fin,Math.max(6000,text.length*220));
+  });
 }
 let flashTimer;
 function flash(ms=15000){
   document.body.classList.remove('flash'); void document.body.offsetWidth;
   document.body.classList.add('flash');
   clearTimeout(flashTimer); flashTimer=setTimeout(()=>document.body.classList.remove('flash'),ms);
+}
+// If BellBoard is open more than once on the same device (two tabs, or the home-screen app plus a browser tab),
+// only the first copy to reach a period start reads it out; the others just flash.
+function claimAnnouncement(key){
+  try{
+    const now=Date.now(),l=JSON.parse(localStorage.getItem('ss-ann')||'null');
+    if(l&&l.k===key&&now-l.t<120000&&l.id!==TAB_ID)return false;
+    localStorage.setItem('ss-ann',JSON.stringify({k:key,t:now,id:TAB_ID}));
+    return JSON.parse(localStorage.getItem('ss-ann')).id===TAB_ID;
+  }catch(e){return true}
+}
+const TAB_ID=Math.random().toString(36).slice(2);
+// Web Locks are atomic across tabs/windows of the same site: the first copy to get the lock for this period
+// announces and keeps the lock for 2 minutes, so the other copies (ifAvailable) skip it.
+function announceOnce(key,text){
+  if(navigator.locks&&navigator.locks.request){
+    navigator.locks.request('bb-announce|'+key,{ifAvailable:true},lock=>{
+      if(!lock)return;
+      announce(text);
+      return new Promise(r=>setTimeout(r,120000));
+    }).catch(()=>{if(claimAnnouncement(key))announce(text)});
+  } else if(claimAnnouncement(key))announce(text);
 }
 // announcement: chime → spoken text → chime
 function announce(text,force){
@@ -887,7 +926,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-16';
+const APP_VERSION='2026.11.23-18';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.

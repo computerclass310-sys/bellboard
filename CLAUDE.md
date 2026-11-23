@@ -14,9 +14,11 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
   wait until the site serves the new version, then reload via `?v=<version>`.
 
 ## Behaviour to keep
-- Flashing (period start) is only inside the schedule table — never the title/banner.
+- Flashing (period start) is only inside the schedule table — never the title/banner. Airport row flashes blue (#1fa3e0 ↔ #0e2a4d).
 - Announcement = `sounds/chime.mp3` → spoken text → `sounds/chime.mp3` (built-in synth chime only as fallback).
   Schedule changes (sync/settings) must not trigger an announcement: `save()` resets `lastAnnounced`.
+- Speech waits for voices to load and uses the chosen voice's own `lang` (else iOS falls back to its default male voice).
+- Only one open copy per device announces a period start (`announceOnce`: Web Locks, localStorage fallback).
 - One audio channel: never two sounds at once. `stopAllSound()` cancels chime + speech + pending steps;
   a new announcement is ignored while one plays; the auto call screen stops any announcement, plays the
   chime, then opens (so the call page's own sound never overlaps ours); turning sound off stops everything.
