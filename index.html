@@ -449,7 +449,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-9</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-10</p>
   </div>
 </div>
 
@@ -645,7 +645,42 @@ function voicesReady(){
 }
 // last speech attempt, shown in settings for diagnosis
 let speechBlocked=false, lastSpeech=null;
+// ===== recorded announcements (definitive fix for silent speech) =====
+// sounds/voice/index.json: {"تبدأ الآن الحصة الأولى":"p1.mp3", …}. A phrase with a recording is played as audio
+// (same path as the chime, so it works wherever the chime works); other phrases fall back to the browser's speech.
+const normPhrase=t=>String(t||'').replace(/[\u064B-\u065F\u0670]/g,'').replace(/[إأآ]/g,'ا').replace(/\s+/g,' ').trim();
+let voiceIndex=null, voiceBufs={};
+function loadVoiceIndex(){
+  return fetch('sounds/voice/index.json?t='+Math.floor(Date.now()/36e5),{cache:'no-cache'}).then(r=>r.ok?r.json():{}).catch(()=>({}))
+    .then(j=>{voiceIndex={};Object.keys(j||{}).forEach(k=>{if(typeof j[k]==='string'&&/^[\w.-]+\.(mp3|m4a|wav|ogg|aac)$/i.test(j[k]))voiceIndex[normPhrase(k)]=j[k]});return voiceIndex});
+}
+function recordingFor(text){return voiceIndex&&voiceIndex[normPhrase(text)]||null}
+function loadRecording(file){
+  if(voiceBufs[file])return voiceBufs[file];
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){return Promise.reject(e)}
+  voiceBufs[file]=fetch('sounds/voice/'+file).then(r=>r.ok?r.arrayBuffer():Promise.reject(new Error('missing')))
+    .then(b=>new Promise((ok,no)=>actx.decodeAudioData(b,ok,no))).catch(e=>{delete voiceBufs[file];throw e});
+  return voiceBufs[file];
+}
+function playRecording(buf,done){
+  let called=false;const fin=()=>{if(!called){called=true;done&&done()}};
+  try{
+    if(playingSrc){try{playingSrc.onended=null;playingSrc.stop()}catch(e){}playingSrc=null}
+    const src=actx.createBufferSource();playingSrc=src;src.buffer=buf;src.connect(actx.destination);
+    src.onended=()=>{if(playingSrc===src)playingSrc=null;fin()};src.start();
+    setTimeout(fin,buf.duration*1000+800);
+  }catch(e){fin()}
+}
 function speak(text,done){
+  const file=recordingFor(text);
+  if(file){
+    loadRecording(file).then(buf=>{lastSpeech={ok:true,voice:'تسجيل صوتي ('+file+')',at:Date.now()};playRecording(buf,done)})
+      .catch(()=>speakTTS(text,done));
+    return;
+  }
+  speakTTS(text,done);
+}
+function speakTTS(text,done){
   let called=false;const fin=()=>{if(!called){called=true;done&&done()}};
   if(!(HAS_TTS())){lastSpeech={ok:false,why:'no-tts',at:Date.now()};fin();return}
   voicesReady().then(()=>{
@@ -774,6 +809,7 @@ const firstGesture=()=>{unlockAudio();if(speechBlocked){speechBlocked=false;upda
 ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{if(speechBlocked){speechBlocked=false;unlockAudio();updateSoundUI()}},true));
 unlockAudio(); updateSoundUI();
 loadChime();
+loadVoiceIndex().then(ix=>Object.values(ix).forEach(f=>loadRecording(f).catch(()=>{})));
 // Keep the device screen awake (Screen Wake Lock) so a phone/tablet doesn't auto-lock and silence the announcements.
 // Browsers can't run a web page's timers or audio while the screen is locked, so preventing the lock is the reliable fix.
 let wakeLock=null;
@@ -1025,7 +1061,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-9';
+const APP_VERSION='2026.11.24-10';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
