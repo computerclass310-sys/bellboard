@@ -13,6 +13,7 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://v.gd/bell
   with every change — open screens compare it and reload themselves automatically.
 
 ## Behaviour to keep
+- Flashing (period start) is only inside the schedule table — never the title/banner.
 - Two themes: green (classic) and airport board; the layout scales to any screen with no scrolling,
   and has portrait (phone) and short-landscape modes.
 - Schedule: Sun/Mon 7 periods (end 13:30), Tue–Thu 6 periods (end 12:40).

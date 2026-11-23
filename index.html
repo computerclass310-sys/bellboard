@@ -36,7 +36,7 @@ body{font-family:'Tajawal',system-ui,sans-serif;color:var(--fg);background:var(-
 main{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;
   background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom));text-align:center}
 .school{font-size:clamp(20px,2.25vw,31px);font-weight:700;margin:0;padding:10px 16px;border:1px solid var(--muted);border-radius:13px}
-h1{font-size:clamp(40px,4.6vw,63px);font-weight:800;color:var(--title-color);margin:24px 0 32px;text-shadow:var(--glow);animation:pulse 2.4s ease-in-out infinite}
+h1{font-size:clamp(40px,4.6vw,63px);font-weight:800;color:var(--title-color);margin:24px 0 32px;text-shadow:var(--glow)}
 @keyframes pulse{50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){h1{animation:none}}
 .now{font-size:clamp(22px,2.1vw,29px);font-weight:700;margin-bottom:24px;display:flex;gap:24px}
@@ -123,7 +123,7 @@ body.airport .school{border:0;padding:0;font-size:22px;color:#fff;text-align:rig
 body.airport .sh-title{display:flex;align-items:center;gap:10px;color:#fff;font-weight:800;font-size:28px;direction:ltr;letter-spacing:.5px}
 body.airport .gate{background:#0b3a63;color:#fff;font-size:.6em;padding:2px 10px;border-radius:3px}
 body.airport .screen > h1{order:1;margin:0;font-size:38px;color:#fff;text-shadow:none;animation:none;padding:10px 16px;text-align:right;background:#0c2a4a;border-bottom:2px solid #38bdf0;display:flex;align-items:center;gap:12px}
-body.airport .screen > h1::before{content:"الآن";background:#1fbf5b;color:#04220f;font-size:.55em;font-weight:800;padding:4px 10px;border-radius:3px;animation:blink 1.2s steps(1) infinite}
+body.airport .screen > h1::before{content:"الآن";background:#1fbf5b;color:#04220f;font-size:.55em;font-weight:800;padding:4px 10px;border-radius:3px}
 @keyframes blink{50%{opacity:.35}}
 body.airport table{order:2;width:100%;font-size:24px}
 body.airport thead{display:table-header-group}
@@ -173,13 +173,13 @@ body.is-fs .exitfs{display:block}
 @keyframes textFlash{0%,100%{opacity:1}50%{opacity:.1}}
 body.airport.flash tbody tr.active td{animation:boardFlash .8s steps(1) infinite}
 body.airport.flash tbody tr.active td .st{background:#1fbf5b;color:#04220f}
-body.airport.flash .screen > h1{animation:bannerFlash .8s steps(1) infinite}
+/* the current-period banner never flashes (only the table row does) */
 @keyframes greenRowFlash{0%,100%{background:#ffe044;color:#07332e}50%{background:rgba(255,224,68,.14);color:#f2faf6}}
 @keyframes greenTitleFlash{0%,100%{color:#ffe044;text-shadow:0 0 28px rgba(255,224,68,.75)}50%{color:#ffffff;text-shadow:none}}
-body.flash:not(.airport) .screen > h1{animation:greenTitleFlash .8s steps(1) infinite}
+/* flashing happens only inside the schedule table */
 body.flash:not(.airport) tr.active td{animation:greenRowFlash .8s steps(1) infinite}
 @media (prefers-reduced-motion:reduce){
-  body.airport.flash tbody tr.active td,body.airport.flash .screen > h1{animation:none;background:#fff;color:#0a1a2e}
+  body.airport.flash tbody tr.active td{animation:none;background:#fff;color:#0a1a2e}
   body.flash:not(.airport) .screen > h1,body.flash:not(.airport) tr.active td{animation:none}
   body.flash:not(.airport) tr.active td{background:#ffe044;color:#07332e}
 }
@@ -408,7 +408,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-4</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-5</p>
   </div>
 </div>
 
@@ -794,7 +794,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-4';
+const APP_VERSION='2026.11.23-5';
 async function checkUpdate(){
   try{
     const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
