@@ -14,6 +14,37 @@
 <meta name="apple-mobile-web-app-title" content="BellBoard">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<script>
+/* Compatibility check in plain ES5 — runs even in browsers too old for the app.
+   Modern browsers run the app's own script. Older ones (no async/await, fetch or Promise)
+   load legacy.js: the same app compiled to ES5 with polyfills. If even that fails, show a clear message. */
+(function(){
+  var miss=[];function t(n,f){try{if(!f())miss.push(n)}catch(e){miss.push(n)}}
+  t('async',function(){new Function('async function f(){await 0}');return true});
+  t('fetch',function(){return !!window.fetch});
+  t('Promise',function(){return !!window.Promise});
+  t('AudioContext',function(){return !!(window.AudioContext||window.webkitAudioContext)});
+  t('speechSynthesis',function(){return !!(window.speechSynthesis&&window.SpeechSynthesisUtterance)});
+  t('Intl',function(){return !!(window.Intl&&Intl.DateTimeFormat)});
+  window.__compatMissing=miss;
+  window.__legacy=miss.indexOf('async')>=0||miss.indexOf('fetch')>=0||miss.indexOf('Promise')>=0||/[?&]legacy=1/.test(location.search);
+  if(!window.__legacy)return;
+  function fail(){
+    if(document.getElementById('oldBrowser'))return;
+    var d=document.createElement('div');d.id='oldBrowser';
+    d.setAttribute('style','position:fixed;top:0;right:0;bottom:0;left:0;z-index:99;background:#002f2a;color:#fff;font:20px/1.7 Tahoma,Arial,sans-serif;text-align:center;padding:40px 24px;direction:rtl');
+    d.innerHTML='<div style="font-size:30px;font-weight:bold;color:#ffe044;margin-bottom:16px">المتصفح على هذا الجهاز قديم جدًا ولا يستطيع تشغيل BellBoard</div>'+
+      '<div>حدّث المتصفح، أو افتح الرابط في متصفح حديث مثل Google Chrome أو Microsoft Edge.</div>'+
+      '<div style="margin-top:24px;font-size:14px;opacity:.75;direction:ltr">Missing: '+miss.join(', ')+'<br>'+String(navigator.userAgent).replace(/[<>&]/g,'')+'</div>';
+    document.body.appendChild(d);
+  }
+  function load(){
+    var sc=document.createElement('script');sc.src='legacy.js?v='+((location.search.match(/[?&]v=([^&]+)/)||[])[1]||Math.floor(Date.now()/6e5));
+    sc.onerror=fail;window.__legacyFail=fail;document.body.appendChild(sc);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -33,14 +64,14 @@ button,input,select,textarea,th,td{font-family:'Tajawal',system-ui,sans-serif}
 html,body{margin:0;height:100%;overflow:hidden}
 html{scrollbar-width:none}::-webkit-scrollbar{display:none}
 body{font-family:'Tajawal',system-ui,sans-serif;color:var(--fg);background:var(--bg-bottom);overflow-x:hidden}
-main{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;
+main{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;
   background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom));text-align:center}
-.school{font-size:clamp(20px,2.25vw,31px);font-weight:700;margin:0;padding:10px 16px;border:1px solid var(--muted);border-radius:13px}
-h1{font-size:clamp(40px,4.6vw,63px);font-weight:800;color:var(--title-color);margin:24px 0 32px;text-shadow:var(--glow)}
+.school{font-size:31px;font-size:clamp(20px,2.25vw,31px);font-weight:700;margin:0;padding:10px 16px;border:1px solid var(--muted);border-radius:13px}
+h1{font-size:63px;font-size:clamp(40px,4.6vw,63px);font-weight:800;color:var(--title-color);margin:24px 0 32px;text-shadow:var(--glow)}
 @keyframes pulse{50%{opacity:.55}}
 @media (prefers-reduced-motion:reduce){h1{animation:none}}
-.now{font-size:clamp(22px,2.1vw,29px);font-weight:700;margin-bottom:24px;display:flex;gap:24px}
-table{border-collapse:collapse;font-size:clamp(18px,1.65vw,22.5px)}
+.now{font-size:29px;font-size:clamp(22px,2.1vw,29px);font-weight:700;margin-bottom:24px;display:flex;gap:24px}
+table{border-collapse:collapse;font-size:22.5px;font-size:clamp(18px,1.65vw,22.5px)}
 td{padding:4px 11px;text-align:right}
 td.t{color:var(--time-color);font-weight:700;direction:ltr;text-align:right}
 tr.active td{font-weight:700}
@@ -79,7 +110,7 @@ body:not(.airport) .btn.dark{background:#07332e;color:#fff}
 body:not(.airport) h1{margin:22px 0 30px}
 /* green: school name in a glass capsule matching the cards, with a gold school emblem */
 body:not(.airport) .school{align-self:flex-start;display:inline-flex;align-items:center;gap:14px;padding:0;border:0;border-radius:0;background:none;box-shadow:none;
-  font-size:clamp(20px,2.2vw,30px);font-weight:800;color:#f2faf6;letter-spacing:.2px;text-shadow:0 2px 10px rgba(0,0,0,.25)}
+  font-size:30px;font-size:clamp(20px,2.2vw,30px);font-weight:800;color:#f2faf6;letter-spacing:.2px;text-shadow:0 2px 10px rgba(0,0,0,.25)}
 body:not(.airport) .school::before{content:"";flex:none;width:38px;height:38px;border-radius:50%;
   background:#ffe044 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='%2307332e'%3E%3Cpath d='M32 6a4 4 0 0 1 4 4v2.2c8.6 1.8 14 9 14 18.3V40l5 6v3H9v-3l5-6v-9.5c0-9.3 5.4-16.5 14-18.3V10a4 4 0 0 1 4-4z'/%3E%3Cpath d='M25 53h14a7 7 0 0 1-14 0z'/%3E%3C/svg%3E") center/21px no-repeat;
   box-shadow:0 0 0 4px rgba(255,224,68,.18)}
@@ -91,7 +122,7 @@ body:not(.airport) .tablewrap table{border-collapse:separate;border-spacing:0;pa
 body:not(.airport) td{padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
 body:not(.airport) tr:last-child td{border-bottom:0}
 body:not(.airport) .tablewrap td.t{width:1%;white-space:nowrap;padding-left:48px}
-body:not(.airport) .tablewrap table{font-size:clamp(21px,1.95vw,26px)}
+body:not(.airport) .tablewrap table{font-size:26px;font-size:clamp(21px,1.95vw,26px)}
 body:not(.airport) tr.active td{background:rgba(255,224,68,.14)}
 body:not(.airport) tr.active td:first-child{border-radius:0 10px 10px 0;box-shadow:inset -4px 0 0 #ffe044}
 body:not(.airport) tr.active td:last-child{border-radius:10px 0 0 10px}
@@ -164,7 +195,8 @@ body.airport .screen > .now{order:3;display:flex;justify-content:space-between;m
 body.is-fs .fs{visibility:hidden}
 .exitfs{display:none;position:fixed;top:10px;right:10px;z-index:6;width:30px;height:30px;padding:6px;border:0;border-radius:8px;background:transparent;color:#fff;opacity:.3;cursor:pointer}
 .exitfs svg{width:100%;height:100%}
-.exitfs:hover,.exitfs:focus-visible{opacity:1;background:rgba(255,255,255,.12)}
+.exitfs:hover{opacity:1;background:rgba(255,255,255,.12)}
+.exitfs:focus-visible{opacity:1;background:rgba(255,255,255,.12)}
 .exitfs:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
 body.is-fs .exitfs{display:block}
 /* airport-style flashing when a new period starts */
@@ -200,15 +232,16 @@ body:not(.airport) .pill:hover{background:linear-gradient(180deg,rgba(255,224,68
 /* call icon */
 .pill svg{width:16px;height:16px;flex:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
 @media (prefers-reduced-motion:reduce){.pill,body:not(.airport) .btn{transition:none}.pill:active,body:not(.airport) .btn:active{transform:none}}
-.pill:focus-visible,.linkbtn:focus-visible,.panel button:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
+.pill:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
+.panel button:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
 #soundBtn{position:fixed;top:12px;left:12px}
 #voiceStatus{position:fixed;top:44px;left:12px;font-size:11px;color:var(--muted)}
 .br{position:fixed;right:12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;bottom:12px}
 .linkbtn{position:fixed;bottom:16px;left:12px;background:none;border:0;color:var(--link);text-decoration:underline;font:14px 'Tajawal',sans-serif;cursor:pointer;z-index:30}
 /* settings */
-#settings{position:fixed;inset:0;z-index:20;display:none;align-items:flex-start;justify-content:center;padding:24px 16px 64px;background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom))}
+#settings{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:20;display:none;align-items:flex-start;justify-content:center;padding:24px 16px 64px;background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom))}
 #settings.open{display:flex}
-.panel{background:var(--panel);color:var(--panel-ink);border-radius:16px;width:min(672px,100%);max-height:calc(100vh - 88px);overflow:auto;padding:20px;text-align:right}
+.panel{background:var(--panel);color:var(--panel-ink);border-radius:16px;width:100%;max-width:672px;width:min(672px,100%);max-height:calc(100vh - 88px);overflow:auto;padding:20px;text-align:right}
 .panel h3{font-size:15px;margin:8px 0 12px}
 .head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .btn{font-family:inherit;background:#fff;color:#111;font-weight:700;font-size:15px;border:1.5px solid #cbd5e1;border-radius:14px;padding:12px 22px;cursor:pointer}
@@ -243,11 +276,11 @@ tr.empty td{text-align:center !important;padding:48px 24px !important;opacity:.8
 #voiceStatus.alert{font-size:15px;font-weight:700;color:#fff;background:rgba(185,28,28,.85);padding:6px 12px;border-radius:999px;bottom:62px}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 /* call screen */
-#call{position:fixed;inset:0;z-index:15;background:#fff;display:none}
+#call{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;z-index:15;background:#fff;display:none}
 #call.open{display:block}
 #call iframe{border:0;width:100%;height:100%}
 #call .back{position:fixed;top:30px;left:170px;background:#02231c;color:#fff;font:700 18px 'Tajawal',sans-serif;border:0;border-radius:999px;padding:10px 36px;cursor:pointer}
-#endMsg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;font-size:clamp(32px,5vw,64px);font-weight:800;color:var(--accent);background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom));z-index:12}
+#endMsg{position:fixed;top:0;right:0;bottom:0;left:0;inset:0;display:none;align-items:center;justify-content:center;font-size:64px;font-size:clamp(32px,5vw,64px);font-weight:800;color:var(--accent);background:radial-gradient(circle at 50% 0%,var(--bg-top),var(--bg-bottom));z-index:12}
 #endMsg.open{display:flex}
 @media (max-width:600px){#call .back{left:16px}.row{flex-wrap:wrap}.row input[type=time]{width:120px}}
 
@@ -289,7 +322,8 @@ body:not(.airport) #schoolRule::after{display:none}
   background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.06));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   border:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 18px rgba(0,0,0,.35);opacity:.55;transition:opacity .2s ease,transform .12s ease}
 .tb-toggle svg{width:18px;height:18px;pointer-events:none}
-.tb-toggle:hover,.tb-toggle:focus-visible,body.tb-open .tb-toggle{opacity:1}
+.tb-toggle:hover,body.tb-open .tb-toggle{opacity:1}
+.tb-toggle:focus-visible{opacity:1}
 .tb-toggle:active{transform:scale(.94)}
 .tb-toggle:focus-visible{outline:2px solid #35c4e8;outline-offset:2px}
 /* toolbar is hidden until the toggle is hovered/clicked; hides again after a few seconds */
@@ -415,11 +449,12 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-7</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-9</p>
   </div>
 </div>
 
-<script>
+<script id="app">
+if(window.__legacy)throw new Error('legacy build runs instead');
 const HAS_TTS=()=>!!(window.speechSynthesis&&window.SpeechSynthesisUtterance);
 const DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const DEFAULTS={
@@ -575,8 +610,9 @@ function deviceInfo(){
     :/Android/.test(ua)?(/TV|AFT|BRAVIA|SMART-TV|SmartTV/i.test(ua)?'شاشة ذكية (Android TV)':'Android')
     :/Tizen|Web0S|WebOS|SMART-TV|SmartTV/i.test(ua)?'شاشة تلفاز ذكية'
     :/CrOS/.test(ua)?'Chromebook':/Win/.test(pl+ua)?'كمبيوتر Windows':/Mac/.test(pl+ua)?'كمبيوتر Mac':/Linux/.test(pl+ua)?'كمبيوتر Linux':'جهاز غير معروف';
+  const ver=(ua.match(/(?:Edg|OPR|SamsungBrowser|CriOS|Chrome|FxiOS|Firefox|Version)\/(\d+)/)||[])[1]||'';
   const br=/Edg\//.test(ua)?'Microsoft Edge':/OPR\//.test(ua)?'Opera':/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome\//.test(ua)?'Google Chrome':/FxiOS|Firefox\//.test(ua)?'Firefox':/Safari\//.test(ua)?'Safari':'متصفح آخر';
-  return {os,br};
+  return {os,br:br+(ver?' '+ver:'')};
 }
 function updateSpeechInfo(){
   const el=$('speechInfo');if(!el)return;
@@ -588,7 +624,8 @@ function updateSpeechInfo(){
 function updateVoiceInfo(){
   updateSpeechInfo();
   const di=$('deviceInfo');if(di){const d=deviceInfo();const n=HAS_TTS()?arVoices().length:0;
-    di.textContent='هذا الجهاز: '+d.os+' — المتصفح: '+d.br+' — عدد الأصوات العربية المثبتة: '+n+(d.os==='كمبيوتر Windows'&&d.br!=='Microsoft Edge'?' (نصيحة: افتح التطبيق في Microsoft Edge لصوت امرأة أوضح)':'');}
+    const miss=(window.__compatMissing||[]).map(x=>({AudioContext:'تشغيل النغمة',speechSynthesis:'القراءة الصوتية',Intl:'التاريخ الهجري'})[x]).filter(Boolean);
+    di.textContent='هذا الجهاز: '+d.os+' — المتصفح: '+d.br+(window.__legacy?' (نسخة المتصفحات القديمة)':'')+' — عدد الأصوات العربية المثبتة: '+n+(miss.length?' — هذا المتصفح لا يدعم: '+miss.join('، '):'')+(d.os==='كمبيوتر Windows'&&d.br!=='Microsoft Edge'?' (نصيحة: افتح التطبيق في Microsoft Edge لصوت امرأة أوضح)':'');}
   const el=$('voiceInfo');if(!el)return;const v=(HAS_TTS())?pickVoice():null;
   if(!v){el.textContent='لا يوجد صوت عربي مثبّت على هذا الجهاز — ثبّت صوتًا عربيًا من إعدادات الجهاز.';return}
   const isMale=MALE_AR.test(v.name)&&!FEMALE_AR.test(v.name);
@@ -629,8 +666,12 @@ function speak(text,done){
         if(why==='not-allowed'){speechBlocked=true;updateSoundUI()}
         fin();
       };
-      try{speechSynthesis.cancel();if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.speak(u)}
-      catch(e){lastSpeech={ok:false,why:'exception',at:Date.now()};fin();return}
+      // keep a reference: Chrome can garbage-collect a pending utterance and drop it silently
+      window.__bbUtterance=u;
+      // Chrome can also ignore speak() issued right after cancel(); only cancel when something is queued, then wait a moment
+      const busy=speechSynthesis.speaking||speechSynthesis.pending;
+      try{if(busy)speechSynthesis.cancel();if(speechSynthesis.paused)speechSynthesis.resume()}catch(e){}
+      setTimeout(()=>{if(called)return;try{speechSynthesis.speak(u)}catch(e){lastSpeech={ok:false,why:'exception',at:Date.now()};fin()}},busy?250:0);
       // Chrome sometimes leaves speech stuck without starting: retry once, then give up so the chime still follows
       setTimeout(()=>{if(!started&&!called){if(attempt<2)go();else{lastSpeech={ok:false,why:arVoices().length?'no-start':'no-arabic-voice',at:Date.now()};fin()}}},2500);
     };
@@ -969,7 +1010,7 @@ function placeClock(){
 placeClock();
 // toolbar reveal: hover or click the toggle; auto-hide after a few seconds unless pointer/focus is on it
 const TB_MS=4000;let tbT;
-const tbOver=()=>document.querySelector('.toolbar:hover,.tb-toggle:hover')||document.querySelector('.toolbar :focus-visible')||$('settings').classList.contains('open');
+const tbOver=()=>document.querySelector('.toolbar:hover,.tb-toggle:hover')||(()=>{try{return document.querySelector('.toolbar :focus-visible')}catch(e){return null}})()||$('settings').classList.contains('open');
 function tbSchedule(){clearTimeout(tbT);tbT=setTimeout(()=>{if(tbOver())tbSchedule();else tbShow(false)},TB_MS)}
 function tbShow(on){document.body.classList.toggle('tb-open',on);$('tbToggle').setAttribute('aria-expanded',on);if(on)tbSchedule();else clearTimeout(tbT)}
 let tbHoverAt=0;
@@ -984,7 +1025,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-7';
+const APP_VERSION='2026.11.24-9';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.

@@ -6,6 +6,10 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
 ## Layout
 - `index.html` — the whole app (HTML + CSS + JS in one file, no build step).
 - `manifest.webmanifest`, `icons/` — home-screen app name and icons.
+- `legacy.js` — **generated**: the app script compiled to ES5 + polyfills for old browsers (loaded by the ES5
+  compatibility probe in `<head>` when async/fetch/Promise are missing). **Rebuild after every change to
+  `index.html`**: `cd tools/legacy && npm install && npm run build` (also checks the output parses as ES5).
+  Test it with `?legacy=1`.
 - `ui-kit/` — screenshots, design guide (`DESIGN.md`) and a ready Lovable prompt (`LOVABLE_PROMPT.md`).
   Re-capture the screenshots when the UI changes.
 
