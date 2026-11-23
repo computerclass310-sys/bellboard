@@ -21,7 +21,7 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://v.gd/bell
 - School name is fixed and not editable in settings.
 - User text is escaped before rendering; the call URL must be http(s); saved settings are sanitised.
 - Shared schedule: `schedule.json` in this repo is the single source for the schedule, call on/off,
-  minutes-before and return time. Every device fetches it on open, on return to the tab and every 15 seconds.
+  minutes-before and return time. Every device reads it from the GitHub contents API (ETag, 304 when unchanged) every 5 seconds, on open and on return to the tab, falling back to the Pages copy when the API is rate-limited.
   Publishing from settings writes it via the GitHub contents API using a fine-grained token typed into
   settings and kept only in that device's localStorage (never commit a token).
   Unpublished local edits are kept (marked "dirty") and are not overwritten by the shared file.

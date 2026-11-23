@@ -408,7 +408,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-5</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-6</p>
   </div>
 </div>
 
@@ -680,11 +680,31 @@ function syncStatus(){
   if(sharedStamp){const d=new Date(sharedStamp);el.textContent='هذا الجهاز متزامن مع الجدول المشترك — آخر نشر: '+d.toLocaleString('ar-SA-u-nu-latn',{dateStyle:'medium',timeStyle:'short'});el.classList.add('ok');return}
   el.textContent='هذا الجهاز يستخدم الجدول الأساسي.';
 }
+// Read the shared schedule straight from the GitHub API (live, no wait for the site rebuild).
+// Conditional requests (ETag) answer 304 when nothing changed, which doesn't use up GitHub's rate limit.
+// If the API is unavailable or rate-limited, fall back to the published site file.
+const API_FILE='https://api.github.com/repos/'+REPO+'/contents/'+SHARED_FILE+'?ref=main';
+let apiEtag=null, apiPausedUntil=0;
+async function fetchShared(){
+  if(Date.now()>apiPausedUntil){
+    try{
+      const h={Accept:'application/vnd.github.raw+json'};if(apiEtag)h['If-None-Match']=apiEtag;
+      const r=await fetch(API_FILE,{headers:h,cache:'no-store'});
+      if(r.status===304)return null;                       // unchanged
+      if(r.ok){apiEtag=r.headers.get('ETag');return await r.json()}
+      if(r.status===403||r.status===429){                  // rate-limited: use the site file until the limit resets
+        const reset=+r.headers.get('X-RateLimit-Reset');apiPausedUntil=reset?reset*1000:Date.now()+10*60*1000;
+      }
+    }catch(e){apiPausedUntil=Date.now()+60*1000}
+  }
+  const r=await fetch(SHARED_FILE+'?t='+Date.now(),{cache:'no-store'});
+  return r.ok?await r.json():null;
+}
 async function pullShared(force){
-  if(!force&&(dirty||$('settings').classList.contains('open')))return syncStatus();
+  if(!force&&(dirty||$('settings').classList.contains('open')||document.visibilityState!=='visible'))return syncStatus();
   try{
-    const r=await fetch(SHARED_FILE+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;
-    const j=await r.json();if(!j||typeof j.settings!=='object')return;
+    const j=await fetchShared();if(!j||typeof j.settings!=='object')return;
+    if(!force&&j.updated&&j.updated===sharedStamp)return;   // already applied
     base=sanitize(Object.assign({},base,j.settings));
     dirty=false;store.set('ss-dirty',false);sharedStamp=j.updated||null;store.set('ss-shared-stamp',sharedStamp);save();
     lastRows=-1;render();if($('settings').classList.contains('open'))fillSettings();syncStatus();
@@ -708,7 +728,7 @@ async function publishShared(){
     const r=await fetch(api,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},h),body:JSON.stringify(body)});
     if(r.status===401)throw new Error('auth');if(!r.ok)throw new Error('perm');
     dirty=false;store.set('ss-dirty',false);sharedStamp=stamp;store.set('ss-shared-stamp',stamp);
-    syncMsg=['ok','✓ تم النشر. يظهر على باقي الأجهزة خلال دقيقة تقريبًا.'];
+    syncMsg=['ok','✓ تم النشر. يظهر على باقي الأجهزة خلال ثوانٍ.'];
   }catch(e){
     syncMsg=['err',e.message==='auth'?'مفتاح النشر غير صحيح أو منتهي الصلاحية.':e.message==='perm'?'المفتاح لا يملك صلاحية الكتابة على مستودع bellboard.':'تعذّر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.'];
   }
@@ -716,8 +736,8 @@ async function publishShared(){
 }
 $('publishBtn').onclick=publishShared;
 $('pullBtn').onclick=()=>{syncMsg=null;pullShared(true).then(()=>{syncMsg=['ok','✓ تم تحميل الجدول المشترك.'];syncStatus()})};
-// check the shared schedule every 15 s (a ~1 KB static file on GitHub Pages, so frequent checks are cheap)
-setInterval(()=>pullShared(),15*1000);
+// check the shared schedule every 5 s (unchanged answers are tiny 304s)
+setInterval(()=>pullShared(),5*1000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullShared()});
 if(store.get('ss-airport')!==false)document.body.classList.add('airport');
 if('speechSynthesis' in window)speechSynthesis.onvoiceschanged=()=>{if($('settings').classList.contains('open'))fillSettings()};
@@ -794,7 +814,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-5';
+const APP_VERSION='2026.11.23-6';
 async function checkUpdate(){
   try{
     const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
