@@ -410,7 +410,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-14</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-15</p>
   </div>
 </div>
 
@@ -504,7 +504,14 @@ function render(){
   if(hm===c.returnTime&&returnFiredFor!==day&&callFiredFor===day){returnFiredFor=day;closeCall();$('endMsg').classList.add('open')}
 }
 
-let actx, chimeBuf=null, chimeLoading=null;
+let actx, chimeBuf=null, chimeLoading=null, playingSrc=null, audioJob=0, announcing=false;
+// one audio channel: stopAllSound() stops the chime and speech and cancels any pending step of a sequence
+function stopAllSound(){
+  audioJob++;
+  if(playingSrc){try{playingSrc.onended=null;playingSrc.stop()}catch(e){}playingSrc=null}
+  try{if('speechSynthesis' in window)speechSynthesis.cancel()}catch(e){}
+  announcing=false;
+}
 // the announcement chime is sounds/chime.mp3 (decoded once into the shared AudioContext);
 // if it can't be loaded, a short built-in three-note chime is used instead
 function loadChime(){
@@ -524,7 +531,8 @@ function chime(done){
   let called=false;const fin=()=>{if(!called){called=true;done&&done()}};
   try{
     actx=actx||new (window.AudioContext||window.webkitAudioContext)();
-    if(chimeBuf){const src=actx.createBufferSource();src.buffer=chimeBuf;src.connect(actx.destination);src.onended=fin;src.start();
+    if(playingSrc){try{playingSrc.onended=null;playingSrc.stop()}catch(e){}playingSrc=null}   // never two chimes at once
+    if(chimeBuf){const src=actx.createBufferSource();playingSrc=src;src.buffer=chimeBuf;src.connect(actx.destination);src.onended=()=>{if(playingSrc===src)playingSrc=null;fin()};src.start();
       setTimeout(fin,chimeBuf.duration*1000+800);return}   // safety net if 'ended' never fires
     synthChime();
   }catch(e){}
@@ -569,10 +577,12 @@ function flash(ms=15000){
   clearTimeout(flashTimer); flashTimer=setTimeout(()=>document.body.classList.remove('flash'),ms);
 }
 // announcement: chime → spoken text → chime
-let announcing=false;
 function announce(text,force){
-  if((!soundOn&&!force)||announcing)return;announcing=true;
-  chime(()=>speak(text,()=>chime(()=>{announcing=false})));
+  if(!soundOn&&!force)return;
+  if(announcing&&!force)return;          // a sequence is already playing — don't start a second one
+  stopAllSound();announcing=true;
+  const job=audioJob, alive=()=>job===audioJob;
+  chime(()=>{if(alive())speak(text,()=>{if(alive())chime(()=>{if(alive())announcing=false})})});
 }
 
 // call-screen link on/off: when off, it never opens automatically and the call button is hidden
@@ -590,8 +600,16 @@ function updateCallPreview(){
   const a=callMinute(todayList(sm)),b=callMinute(todayList(tu));
   $('callPreview').textContent='بحسب الجدول الحالي: الأحد والاثنين '+(a!=null?fmt(a):'—')+' — الثلاثاء إلى الخميس '+(b!=null?fmt(b):'—');
 }
-function openCall(auto){ const u=safeUrl(cfg().callUrl); if(!u)return; $('endMsg').classList.remove('open'); $('callFrame').src=u; $('call').classList.add('open'); if(auto&&soundOn){unlockAudio();chime()} }
-function closeCall(){ $('call').classList.remove('open'); $('callFrame').src='about:blank'; }
+function showCall(u){ $('endMsg').classList.remove('open'); $('callFrame').src=u; $('call').classList.add('open'); }
+function openCall(auto){
+  const u=safeUrl(cfg().callUrl); if(!u)return;
+  stopAllSound();
+  if(auto&&soundOn){                       // chime first, then the call screen (and its own sound)
+    unlockAudio();const job=audioJob;
+    chime(()=>{if(job===audioJob)showCall(u)});
+  } else showCall(u);
+}
+function closeCall(){ stopAllSound(); $('call').classList.remove('open'); $('callFrame').src='about:blank'; }
 
 const ICON_ON='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3v6h3.5L11 19z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>',ICON_OFF='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6.5 9H3v6h3.5L11 19z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg>';
 // sound is ON by default and remembered; browsers only allow audio after the first interaction on the page,
@@ -599,7 +617,7 @@ const ICON_ON='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="c
 function audioReady(){return !!actx&&actx.state==='running'}
 function unlockAudio(){
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume&&actx.resume().then(updateSoundUI,()=>{})}catch(e){}
-  try{if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}}catch(e){}
+  try{if('speechSynthesis' in window&&!speechSynthesis.speaking&&!announcing){const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}}catch(e){}
   setTimeout(updateSoundUI,150);
 }
 function updateSoundUI(){
@@ -611,7 +629,7 @@ function updateSoundUI(){
   $('voiceStatus').textContent=!soundOn?'':(audioReady()?'':'اضغط في أي مكان على الشاشة لتفعيل الصوت');
 }
 $('soundBtn').onclick=()=>{
-  soundOn=!soundOn; store.set('ss-sound',soundOn);
+  soundOn=!soundOn; store.set('ss-sound',soundOn); if(!soundOn)stopAllSound();
   if(soundOn)unlockAudio(); updateSoundUI();
 };
 const firstGesture=()=>{unlockAudio();if(audioReady())['pointerdown','keydown','touchstart'].forEach(ev=>removeEventListener(ev,firstGesture,true))};
@@ -867,7 +885,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.23-14';
+const APP_VERSION='2026.11.23-15';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
