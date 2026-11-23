@@ -24,7 +24,7 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
 - Announcement = `sounds/chime.mp3` → spoken text → `sounds/chime.mp3` (built-in synth chime only as fallback).
   Spoken text is played from a **recording** when `sounds/voice/index.json` maps the phrase to a file in
   `sounds/voice/` (decoded and played like the chime — works wherever the chime works); otherwise the browser's
-  speech engine is used as a fallback. Recordings are generated with ElevenLabs (female Arabic voice).
+  speech engine is used as a fallback. Recordings are generated with ElevenLabs (female Arabic voice `NfdaqpoTPn7nF7WBBRTv`, model `eleven_multilingual_v2`, stability 0.65, similarity 0.8) and checked by transcribing them back.
   Schedule changes (sync/settings) must not trigger an announcement: `save()` resets `lastAnnounced`.
 - Speech waits for voices to load and uses the chosen voice's own `lang` (else iOS falls back to its default male voice).
   A reload loses the browser's permission to speak, so app updates are **not** auto-applied during school hours
