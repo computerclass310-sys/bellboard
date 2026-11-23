@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache">
 <title>BellBoard</title>
 <link id="favIcon" rel="icon" type="image/svg+xml" href="icons/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -386,6 +387,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.23-1</p>
   </div>
 </div>
 
@@ -711,6 +713,17 @@ let idleT;
 function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT=setTimeout(()=>document.body.classList.add('idle'),3000)}
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
+// auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
+const APP_VERSION='2026.11.23-1';
+async function checkUpdate(){
+  try{
+    const r=await fetch(location.href.split('#')[0],{cache:'no-store'});if(!r.ok)return;
+    const m=(await r.text()).match(/const APP_VERSION='([^']+)'/);
+    if(m&&m[1]!==APP_VERSION&&!$('settings').classList.contains('open')&&!$('call').classList.contains('open'))location.reload();
+  }catch(e){}
+}
+setTimeout(checkUpdate,3000);setInterval(checkUpdate,10*60*1000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate()});
 render();setInterval(render,1000);
 </script>
 </body>
