@@ -449,7 +449,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.26-2</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.26-3</p>
   </div>
 </div>
 
@@ -889,7 +889,7 @@ panel.addEventListener('click',e=>{
   if(t.dataset.del){c[t.dataset.del].splice(+t.dataset.i,1);if(!override)markDirty();save();fillSettings();render()}
   if(t.dataset.add){c[t.dataset.add].push(['','تبدأ الآن ']);if(!override)markDirty();save();fillSettings();const rows=$('g-'+t.dataset.add).querySelectorAll('input[type=time]');rows[rows.length-1].focus()}
 });
-$('todayOnly').onchange=e=>{override=e.target.checked?{date:todayKey(),cfg:clone(base)}:null;save();fillSettings();render()};
+$('todayOnly').onchange=e=>{e.target.checked=false;override=null;save()};   // 'today only' is always off
 $('airport').onchange=e=>{document.body.classList.toggle('airport',e.target.checked);placeClock();fit();store.set('ss-airport',e.target.checked)};
 $('testCall').onclick=()=>{if(cfg().callEnabled===false)return;closeSettings();openCall(true)};
 $('testSound').onclick=()=>{closeSettings();flash();const l=todayList();announce(l.length?l[0][1]:'تجربة الصوت',true)};
@@ -1065,7 +1065,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.26-2';
+const APP_VERSION='2026.11.26-3';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
