@@ -415,7 +415,7 @@ body.short.airport .screen > h1{padding:6px 14px}
   <div class="panel">
     <div class="head"><h2 class="ptitle">الإعدادات</h2><button class="closex" id="closeBtn" aria-label="إغلاق الإعدادات" title="إغلاق"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <h3>توقيت الحصص — واحد لكل الأيام</h3>
-    <label class="chk"><input type="checkbox" id="todayOnly"> تغيير عارض لهذا اليوم فقط — يرجع التوقيت الأساسي غدًا تلقائيًا</label>
+    <label class="chk" hidden style="display:none"><input type="checkbox" id="todayOnly"> تغيير عارض لهذا اليوم فقط — يرجع التوقيت الأساسي غدًا تلقائيًا</label>
     <label class="chk"><input type="checkbox" id="airport"> طابع شاشة المطار (على هذا الجهاز فقط)</label>
     <div id="g-all"></div>
     <button class="btn" data-add="all">إضافة حصة (كل الأيام)</button>
@@ -449,7 +449,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.26-1</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.26-2</p>
   </div>
 </div>
 
@@ -487,7 +487,7 @@ function sanitize(c){
 }
 let base=sanitize(store.get('ss-base'));
 let override=store.get('ss-override');
-if(!override||typeof override!=='object'||override.date!==todayKey()) override=null; else override={date:override.date,cfg:sanitize(override.cfg)};
+override=null;store.set('ss-override',null);   // the 'today only' option is hidden: never keep an old one active
 const cfg=()=>{if(override&&override.date!==todayKey()){override=null;store.set('ss-override',null)}return override?override.cfg:base};
 // saving a schedule change re-bases the 'current period' tracker so the change itself never triggers a chime/flash
 function save(){ store.set('ss-base',base); store.set('ss-override',override); if(typeof lastAnnounced!=='undefined')lastAnnounced=null; }
@@ -1065,7 +1065,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.26-1';
+const APP_VERSION='2026.11.26-2';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.
