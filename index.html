@@ -449,7 +449,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.24-12</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.26-1</p>
   </div>
 </div>
 
@@ -917,7 +917,10 @@ let dirty=!!store.get('ss-dirty'), sharedStamp=store.get('ss-shared-stamp'), syn
 const pickShared=c=>{const o={};SHARED_KEYS.forEach(k=>o[k]=clone(c[k]));return o};
 // first run of the sync version: keep any edits already made on this device so they can be published
 if(store.get('ss-sync-init')==null){store.set('ss-sync-init',true);if(JSON.stringify(pickShared(base))!==JSON.stringify(pickShared(DEFAULTS))){dirty=true;store.set('ss-dirty',true)}}
-function markDirty(){dirty=true;store.set('ss-dirty',true);syncMsg=null;syncStatus()}
+function markDirty(){dirty=true;store.set('ss-dirty',true);store.set('ss-dirty-day',todayKey());syncMsg=null;syncStatus()}
+// every new day starts from the shared schedule (reset to the base schedule each night before 3 AM):
+// unpublished edits from an earlier day are dropped so they can't keep this screen on an old schedule
+function dropStaleEdits(){if(dirty&&store.get('ss-dirty-day')!==todayKey()){dirty=false;store.set('ss-dirty',false);sharedStamp=null;store.set('ss-shared-stamp',null)}}
 function syncStatus(){
   const el=$('syncStatus');if(!el)return;el.className='hint sync-status';
   if(syncMsg){el.textContent=syncMsg[1];el.classList.add(syncMsg[0]);return}
@@ -946,6 +949,7 @@ async function fetchShared(){
   return r.ok?await r.json():null;
 }
 async function pullShared(force){
+  dropStaleEdits();
   if(!force&&(dirty||$('settings').classList.contains('open')||document.visibilityState!=='visible'))return syncStatus();
   try{
     const j=await fetchShared();if(!j||typeof j.settings!=='object')return;
@@ -1061,7 +1065,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.24-12';
+const APP_VERSION='2026.11.26-1';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.

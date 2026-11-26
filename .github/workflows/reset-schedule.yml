@@ -1,0 +1,27 @@
+name: Reset schedule to base (nightly)
+on:
+  schedule:
+    # Riyadh is UTC+3: 00:07 and 01:37 Riyadh — two tries so a delayed GitHub run still lands before 3 AM
+    - cron: '7 21 * * *'
+    - cron: '37 22 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: reset-schedule
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/reset-schedule.js
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- schedule.json; then echo "nothing to reset"; exit 0; fi
+          git config user.name "bellboard-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add schedule.json
+          git commit -m "Nightly reset of the shared schedule to the base schedule"
+          git push

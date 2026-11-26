@@ -47,4 +47,8 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
   Publishing from settings writes it via the GitHub contents API using a fine-grained token typed into
   settings and kept only in that device's localStorage (never commit a token).
   Unpublished local edits are kept (marked "dirty") and are not overwritten by the shared file.
+- Nightly reset: `.github/workflows/reset-schedule.yml` (00:07 and 01:37 Riyadh, before 3 AM) runs
+  `tools/reset-schedule.js`, which rewrites `schedule.json` to `DEFAULTS` from `index.html` (only when it differs).
+  The base schedule is therefore `DEFAULTS` — change it there. On a device, unpublished edits from an earlier day
+  are dropped (`dropStaleEdits`, `ss-dirty-day`) so every day starts from the shared schedule.
 - Device-only settings (localStorage): theme, sound on/off, voice gender (default female, like the original; pitch raised when only male Arabic voices exist) and specific voice, "today only" override.
