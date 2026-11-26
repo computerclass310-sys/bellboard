@@ -449,7 +449,7 @@ body.short.airport .screen > h1{padding:6px 14px}
       <button class="btn" id="testSound">تجربة التنبيه والصوت</button>
       <button class="btn dark" id="resetBtn">إرجاع الجدول الأساسي</button>
     </div>
-    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.26-3</p>
+    <p class="hint" id="appVersion" style="margin-top:14px;text-align:center">BellBoard — الإصدار 2026.11.26-4</p>
   </div>
 </div>
 
@@ -990,6 +990,8 @@ setInterval(()=>pullShared(),3*1000);
 // and immediately when the screen comes back online or gets focus
 addEventListener('online',()=>{pullShared();checkUpdate()});addEventListener('focus',()=>pullShared());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pullShared()});
+// airport board is the default theme; once (v2) reset every device that had switched it off back to the airport board
+if(!store.get('ss-airport-v2')){store.set('ss-airport',true);store.set('ss-airport-v2',true)}
 if(store.get('ss-airport')!==false)document.body.classList.add('airport');
 if(HAS_TTS())speechSynthesis.onvoiceschanged=()=>{if($('settings').classList.contains('open'))fillSettings()};
 // fit the board to the screen: scale up or down so nothing ever scrolls
@@ -1065,7 +1067,7 @@ function wake(){document.body.classList.remove('idle');clearTimeout(idleT);idleT
 ['mousemove','pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,wake,{passive:true}));wake();
 syncCallUI();
 // auto-update: browsers and home-screen apps may keep an old copy; check the published file and reload when it changes
-const APP_VERSION='2026.11.26-3';
+const APP_VERSION='2026.11.26-4';
 // Find out about new versions quickly: ask the GitHub API for index.html with an ETag (a tiny 304 when nothing
 // changed), and fall back to a cache-busted copy of the site. Only reload once the site itself serves the new
 // version (the site rebuild takes ~30 s), and load it with ?v=… so no stale cached copy can come back.

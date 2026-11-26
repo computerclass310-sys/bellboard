@@ -51,4 +51,4 @@ https://computerclass310-sys.github.io/bellboard/ (short link: https://tinyurl.c
   `tools/reset-schedule.js`, which rewrites `schedule.json` to `DEFAULTS` from `index.html` (only when it differs).
   The base schedule is therefore `DEFAULTS` — change it there. On a device, unpublished edits from an earlier day
   are dropped (`dropStaleEdits`, `ss-dirty-day`) so every day starts from the shared schedule.
-- Device-only settings (localStorage): theme, sound on/off, voice gender (default female, like the original; pitch raised when only male Arabic voices exist) and specific voice, "today only" override — **always off**: the option is hidden, any saved one is cleared at load, and the checkbox handler forces it off.
+- Device-only settings (localStorage): theme (airport board is the default; `ss-airport-v2` reset every device to it once on 2026.11.26-4), sound on/off, voice gender (default female, like the original; pitch raised when only male Arabic voices exist) and specific voice, "today only" override — **always off**: the option is hidden, any saved one is cleared at load, and the checkbox handler forces it off.
